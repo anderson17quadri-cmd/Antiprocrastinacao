@@ -1,0 +1,113 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { Redemption, Reward, RewardCategory, UserProfile } from '@/domain/entities';
+import { DEFAULT_REWARDS } from '@/constants/seed';
+import { newId } from '@/utils/id';
+import { notifyPartner } from '@/services/notifications';
+import { useAuthStore } from './authStore';
+
+export interface NewRewardInput {
+  name: string;
+  description?: string;
+  emoji: string;
+  cost: number;
+  category: RewardCategory;
+  photoUrl?: string;
+}
+
+interface RewardsState {
+  rewards: Record<string, Reward>;
+  redemptions: Redemption[];
+  seeded: boolean;
+  /** Popula a loja com as recompensas sugeridas na primeira abertura. */
+  ensureSeeded: () => void;
+  addReward: (input: NewRewardInput) => void;
+  removeReward: (id: string) => void;
+  /** Resgata uma recompensa; falha se as moedas forem insuficientes. */
+  redeem: (rewardId: string, user: UserProfile) => 'ok' | 'insufficient';
+  markUsed: (redemptionId: string) => void;
+}
+
+export const useRewardsStore = create<RewardsState>()(
+  persist(
+    (set, get) => ({
+      rewards: {},
+      redemptions: [],
+      seeded: false,
+
+      ensureSeeded: () => {
+        if (get().seeded) return;
+        const userId = useAuthStore.getState().user?.id ?? 'system';
+        const rewards: Record<string, Reward> = {};
+        DEFAULT_REWARDS.forEach((tpl) => {
+          const reward: Reward = {
+            id: newId('reward'),
+            name: tpl.name,
+            description: tpl.description,
+            emoji: tpl.emoji,
+            cost: tpl.cost,
+            category: tpl.category,
+            createdBy: userId,
+            createdAt: Date.now(),
+          };
+          rewards[reward.id] = reward;
+        });
+        set({ rewards, seeded: true });
+      },
+
+      addReward: (input) => {
+        const userId = useAuthStore.getState().user?.id ?? 'system';
+        const reward: Reward = {
+          id: newId('reward'),
+          createdBy: userId,
+          createdAt: Date.now(),
+          ...input,
+        };
+        set((s) => ({ rewards: { ...s.rewards, [reward.id]: reward } }));
+      },
+
+      removeReward: (id) => {
+        set((s) => {
+          const rewards = { ...s.rewards };
+          delete rewards[id];
+          return { rewards };
+        });
+      },
+
+      redeem: (rewardId, user) => {
+        const reward = get().rewards[rewardId];
+        if (!reward) return 'insufficient';
+        const paid = useAuthStore.getState().spendCoins(reward.cost);
+        if (!paid) return 'insufficient';
+
+        const redemption: Redemption = {
+          id: newId('redeem'),
+          rewardId: reward.id,
+          rewardName: reward.name,
+          rewardEmoji: reward.emoji,
+          cost: reward.cost,
+          userId: user.id,
+          userName: user.name,
+          at: Date.now(),
+          used: false,
+        };
+        set((s) => ({ redemptions: [redemption, ...s.redemptions].slice(0, 200) }));
+        notifyPartner(`${user.name} resgatou a recompensa ${reward.emoji} ${reward.name}!`);
+        return 'ok';
+      },
+
+      markUsed: (redemptionId) => {
+        set((s) => ({
+          redemptions: s.redemptions.map((r) =>
+            r.id === redemptionId ? { ...r, used: true } : r,
+          ),
+        }));
+      },
+    }),
+    {
+      name: 'foco-a-dois/rewards',
+      storage: createJSONStorage(() => AsyncStorage),
+    },
+  ),
+);

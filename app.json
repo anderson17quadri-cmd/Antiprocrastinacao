@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Foco a Dois",
+    "slug": "foco-a-dois",
+    "version": "1.0.0",
+    "scheme": "focoadois",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "backgroundColor": "#101010",
+    "primaryColor": "#6C63FF",
+    "android": {
+      "package": "com.focoadois.app",
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": ["POST_NOTIFICATIONS", "READ_CALENDAR", "WRITE_CALENDAR"]
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.focoadois.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-notifications",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "O Foco a Dois usa o calendário para sincronizar as tarefas do casal."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
