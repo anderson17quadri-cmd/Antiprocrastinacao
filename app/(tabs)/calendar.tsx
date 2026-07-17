@@ -201,6 +201,7 @@ export default function CalendarScreen() {
               key={task.id}
               task={task}
               index={index}
+              currentUserId={user?.id}
               assigneeName={nameFor(task.assigneeId)}
               onPress={() => openTask(task)}
               onAction={() => openTask(task)}

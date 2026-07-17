@@ -11,6 +11,9 @@ dois usuários e com funcionamento offline.
 
 | Área | O que faz |
 | --- | --- |
+| **3 tipos de tarefa** | **Individual** (cada um conclui a sua parte), **Compartilhada** (um conclui, vale para os dois) e **Casa** (responsável: um dos dois ou Ambos — só o responsável pode concluir) |
+| **Biblioteca inicial** | 250+ tarefas prontas em 14 categorias (🏠 Casa, ❤️ Casal, 👤 Pessoais, 💪 Saúde, 🍳 Cozinha, 🧺 Lavandaria, 💼 Trabalho, 📚 Estudos, 💰 Finanças, 🚗 Carro, 🐶 Pets, 🌱 Jardim, 🛒 Compras, 🎯 Produtividade) com busca e filtros |
+| **Criar tarefa** | Fluxo tipo-primeiro: Individual/Compartilhada/Casa → nome, categoria, responsável, data, hora, repetição, XP, moedas, prioridade, tempo estimado, cor, ícone, lembretes e notas |
 | **Splash + Login** | Logo animada, e-mail/senha, Google e Apple, criação de conta |
 | **Casal** | Conta com exatamente 2 usuários, convite por código (`FOCO-XXXX`), dados idênticos para os dois |
 | **Home** | Saudação, calendário horizontal, progresso do dia, sequência 🔥, pontuação 🏆, produtividade ❤️, tarefas do dia |
@@ -24,7 +27,7 @@ dois usuários e com funcionamento offline.
 | **Desafios** | Automáticos: 20/100/500 tarefas, lavar roupa 10×, 7/30 dias consecutivos — com XP, moedas e confetes |
 | **Liga do Casal** | Bronze → Prata → Ouro → Platina → Diamante → Mestre → Lenda, com desbloqueios cosméticos |
 | **Tarefas da Casa** | Lista pronta (lavar roupa, limpar cozinha, mercado…) com prioridade, tempo médio, repetição e XP |
-| **Assistente IA** | Analisa hábitos do casal: melhor horário, divisão justa, tarefas esquecidas, alerta de procrastinação, resumo semanal |
+| **Assistente IA** | Analisa hábitos do casal: melhor horário, divisão justa, tarefas esquecidas, alerta de procrastinação, resumo semanal e **sugestões automáticas de tarefas** baseadas na rotina |
 | **Configurações** | Tema (escuro/claro/sistema), idioma, notificações, backup, exportar dados, excluir conta |
 | **Animações** | Reanimated: cards deslizando, ripple, progress ring animado, confetes ao concluir o dia 🎉 |
 

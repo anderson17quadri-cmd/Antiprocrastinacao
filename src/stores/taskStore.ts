@@ -8,9 +8,11 @@ import {
   TaskDifficulty,
   TaskPriority,
   TaskRepeat,
+  TaskType,
   UserProfile,
 } from '@/domain/entities';
 import { coinsForTask, xpForTask } from '@/domain/gamification';
+import { applyCompletion } from '@/domain/taskRules';
 import { DEFAULT_SCHEDULE } from '@/constants/seed';
 import { newId } from '@/utils/id';
 import { notifyPartner } from '@/services/notifications';
@@ -20,7 +22,10 @@ import { useAuthStore } from './authStore';
 export interface NewTaskInput {
   title: string;
   description?: string;
+  notes?: string;
   emoji: string;
+  color?: string;
+  type: TaskType;
   category: TaskCategory;
   date: string;
   time?: string;
@@ -43,7 +48,8 @@ interface TaskState {
   updateTask: (id: string, patch: Partial<Task>) => void;
   removeTask: (id: string) => void;
   startTask: (id: string, user: UserProfile) => void;
-  completeTask: (id: string, user: UserProfile, spentSeconds: number) => void;
+  /** Conclui respeitando o tipo da tarefa; false se o usuário não pode concluir. */
+  completeTask: (id: string, user: UserProfile, spentSeconds: number) => boolean;
   cancelTask: (id: string, user: UserProfile) => void;
   reopenTask: (id: string) => void;
 }
@@ -83,15 +89,23 @@ export const useTaskStore = create<TaskState>()(
         const now = Date.now();
         const seeded: Record<string, Task> = { ...state.tasks };
         DEFAULT_SCHEDULE.forEach((tpl, index) => {
+          // Individuais e compartilhadas pertencem aos dois; tarefas da casa
+          // alternam o responsável entre os membros do casal.
+          const assigneeId =
+            tpl.type === 'casa' && members.length
+              ? members[index % members.length].id
+              : undefined;
           const task: Task = {
             id: newId('task'),
             title: tpl.title,
             emoji: tpl.emoji,
+            type: tpl.type,
             category: tpl.category,
             date: dateKey,
             time: tpl.time,
             estimatedMinutes: tpl.estimatedMinutes,
-            assigneeId: members.length ? members[index % members.length].id : undefined,
+            assigneeId,
+            completedBy: tpl.type === 'individual' ? [] : undefined,
             status: 'pending',
             priority: 'media',
             difficulty: tpl.difficulty,
@@ -114,6 +128,7 @@ export const useTaskStore = create<TaskState>()(
           id: newId('task'),
           spentSeconds: 0,
           status: 'pending',
+          completedBy: input.type === 'individual' ? [] : undefined,
           createdBy: auth.user?.id ?? 'system',
           createdAt: now,
           updatedAt: now,
@@ -158,20 +173,26 @@ export const useTaskStore = create<TaskState>()(
 
       completeTask: (id, user, spentSeconds) => {
         const task = get().tasks[id];
-        if (!task) return;
-        const updated: Task = {
-          ...task,
-          status: 'done',
-          spentSeconds: spentSeconds || task.spentSeconds,
-          completedAt: Date.now(),
-          updatedAt: Date.now(),
-        };
+        if (!task) return false;
+
+        const auth = useAuthStore.getState();
+        const memberIds = auth.couple?.memberIds ?? [user.id];
+        const updated = applyCompletion(task, user.id, memberIds, spentSeconds);
+        if (!updated) return false;
+
         set((s) => ({
           tasks: { ...s.tasks, [id]: updated },
           activity: logActivity(s, 'completed', user, task.title),
         }));
         pushTask(updated);
-        notifyPartner(`${user.name} concluiu ${task.title}. +${xpForTask(updated)} XP 🪙+${coinsForTask(updated)}`);
+
+        const partnerStillPending =
+          updated.type === 'individual' && updated.status !== 'done';
+        notifyPartner(
+          partnerStillPending
+            ? `${user.name} concluiu ${task.title}. A sua ainda está pendente! +${xpForTask(updated)} XP`
+            : `${user.name} concluiu ${task.title}. +${xpForTask(updated)} XP 🪙+${coinsForTask(updated)}`,
+        );
         useAuthStore.getState().addRewards(xpForTask(updated), coinsForTask(updated));
 
         // Todas as tarefas do dia concluídas? Registra o dia na sequência.
@@ -184,6 +205,7 @@ export const useTaskStore = create<TaskState>()(
             activity: logActivity(s, 'milestone', user, undefined, 'Meta diária alcançada! Parabéns ao casal! 🎉'),
           }));
         }
+        return true;
       },
 
       cancelTask: (id, user) => {

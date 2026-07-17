@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from '@/components/ui/AppText';
@@ -13,6 +13,7 @@ import { StatCard } from '@/components/home/StatCard';
 import { TaskListItem } from '@/components/home/TaskListItem';
 import { WeekStrip } from '@/components/home/WeekStrip';
 import { coupleScore } from '@/domain/gamification';
+import { completionBlockReason, isDoneFor } from '@/domain/taskRules';
 import { completionRatio, tasksForDate } from '@/domain/stats';
 import { useAuthStore } from '@/stores/authStore';
 import { useTaskStore } from '@/stores/taskStore';
@@ -60,7 +61,14 @@ export default function HomeScreen() {
     if (!user) return;
     const task = tasks[taskId];
     if (!task) return;
-    if (task.status === 'pending') {
+
+    const blocked = completionBlockReason(task, user.id, nameFor(task.assigneeId));
+    if (blocked) {
+      Alert.alert('Tarefa bloqueada', blocked);
+      return;
+    }
+
+    if (task.status === 'pending' && !isDoneFor(task, user.id)) {
       startTask(taskId, user);
       timer.start(taskId);
       router.push({ pathname: '/task/[id]', params: { id: taskId } });
@@ -128,8 +136,8 @@ export default function HomeScreen() {
         {/* Tarefas de hoje */}
         <SectionHeader
           title={selectedDate === todayKey() ? 'Tarefas de hoje' : 'Tarefas do dia'}
-          actionLabel="Tarefas da casa"
-          onAction={() => router.push('/house')}
+          actionLabel="Biblioteca 📚"
+          onAction={() => router.push('/library')}
         />
         {dayTasks.length === 0 ? (
           <Card animated={false} style={styles.empty}>
@@ -147,6 +155,7 @@ export default function HomeScreen() {
               key={task.id}
               task={task}
               index={index}
+              currentUserId={user?.id}
               assigneeName={nameFor(task.assigneeId)}
               onPress={() => router.push({ pathname: '/task/[id]', params: { id: task.id } })}
               onAction={() => handleAction(task.id)}

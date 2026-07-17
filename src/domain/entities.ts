@@ -6,12 +6,27 @@
 export type TaskCategory =
   | 'rotina'
   | 'casa'
-  | 'trabalho'
-  | 'refeicao'
-  | 'saude'
   | 'casal'
-  | 'mercado'
-  | 'pessoal';
+  | 'pessoal'
+  | 'saude'
+  | 'cozinha'
+  | 'lavandaria'
+  | 'trabalho'
+  | 'estudos'
+  | 'financas'
+  | 'carro'
+  | 'pets'
+  | 'jardim'
+  | 'compras'
+  | 'produtividade';
+
+/**
+ * Tipos de tarefa:
+ * - individual: cada usuário tem a própria conclusão (completedBy);
+ * - compartilhada: quando um conclui, vale para os dois;
+ * - casa: doméstica, com responsável (um dos dois ou ambos).
+ */
+export type TaskType = 'individual' | 'compartilhada' | 'casa';
 
 export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'cancelled';
 
@@ -25,14 +40,22 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
+  /** Notas livres do casal sobre a tarefa. */
+  notes?: string;
   emoji: string;
+  /** Cor personalizada do card (hex); usa a cor da categoria se ausente. */
+  color?: string;
+  type: TaskType;
   category: TaskCategory;
   /** Dia da tarefa no formato YYYY-MM-DD */
   date: string;
   /** Horário no formato HH:mm */
   time?: string;
   estimatedMinutes: number;
+  /** Responsável: id de um membro, ou undefined = Ambos. */
   assigneeId?: string;
+  /** Tarefas individuais: ids dos usuários que já concluíram a sua parte. */
+  completedBy?: string[];
   status: TaskStatus;
   priority: TaskPriority;
   difficulty: TaskDifficulty;

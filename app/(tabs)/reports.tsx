@@ -92,10 +92,10 @@ export default function ReportsScreen() {
     const winner = (a: number, b: number) =>
       a === b ? 'Empate' : a > b ? (user?.name ?? 'Você') : (partner?.name ?? 'Seu par');
 
-    const cooksUser = byMember(user?.id, (t) => t.category === 'refeicao');
-    const cooksPartner = byMember(partner?.id, (t) => t.category === 'refeicao');
-    const cleansUser = byMember(user?.id, (t) => t.category === 'casa');
-    const cleansPartner = byMember(partner?.id, (t) => t.category === 'casa');
+    const cooksUser = byMember(user?.id, (t) => t.category === 'cozinha');
+    const cooksPartner = byMember(partner?.id, (t) => t.category === 'cozinha');
+    const cleansUser = byMember(user?.id, (t) => t.category === 'casa' || t.category === 'lavandaria');
+    const cleansPartner = byMember(partner?.id, (t) => t.category === 'casa' || t.category === 'lavandaria');
     const cancelledUser = allTasks.filter((t) => t.status === 'cancelled' && t.assigneeId === user?.id).length;
     const cancelledPartner = allTasks.filter((t) => t.status === 'cancelled' && t.assigneeId === partner?.id).length;
 

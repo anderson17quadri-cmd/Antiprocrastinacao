@@ -5,26 +5,34 @@ import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AppText } from '@/components/ui/AppText';
 import { EmojiBadge } from '@/components/ui/EmojiBadge';
-import { CATEGORIES } from '@/constants/categories';
+import { CATEGORIES, TASK_TYPES } from '@/constants/categories';
 import { Task } from '@/domain/entities';
+import { canComplete, isDoneFor } from '@/domain/taskRules';
 import { cardShadow, radius, spacing, useTheme } from '@/theme';
 import { formatMinutes } from '@/utils/format';
 
 interface Props {
   task: Task;
   assigneeName?: string;
+  /** Usuário atual — define conclusão individual e permissão de casa. */
+  currentUserId?: string;
   onPress: () => void;
   onAction: () => void;
   index?: number;
 }
 
 /** Linha de tarefa da lista: ícone, nome, horário, responsável e ação. */
-export function TaskListItem({ task, assigneeName, onPress, onAction, index = 0 }: Props) {
+export function TaskListItem({ task, assigneeName, currentUserId, onPress, onAction, index = 0 }: Props) {
   const { colors, dark } = useTheme();
   const category = CATEGORIES[task.category];
-  const done = task.status === 'done';
+  const tint = task.color ?? category.color;
+  const done = currentUserId ? isDoneFor(task, currentUserId) : task.status === 'done';
   const cancelled = task.status === 'cancelled';
-  const inProgress = task.status === 'in_progress';
+  const inProgress = task.status === 'in_progress' && !done;
+  const locked = Boolean(
+    currentUserId && !done && !cancelled && !canComplete(task, currentUserId) && task.type === 'casa',
+  );
+  const typeMeta = TASK_TYPES[task.type];
 
   const handleAction = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
@@ -43,7 +51,7 @@ export function TaskListItem({ task, assigneeName, onPress, onAction, index = 0 
           (done || cancelled) && { opacity: 0.62 },
         ]}
       >
-        <EmojiBadge emoji={task.emoji} tint={category.color} />
+        <EmojiBadge emoji={task.emoji} tint={tint} />
         <View style={styles.info}>
           <AppText
             variant="subheading"
@@ -59,21 +67,20 @@ export function TaskListItem({ task, assigneeName, onPress, onAction, index = 0 
                 {task.time}
               </AppText>
             ) : null}
-            <View style={[styles.dot, { backgroundColor: category.color }]} />
+            <View style={[styles.dot, { backgroundColor: tint }]} />
             <AppText variant="caption" tone="muted">
-              {category.label}
+              {typeMeta.emoji} {category.label}
             </AppText>
-            {assigneeName ? (
-              <>
-                <View style={[styles.dot, { backgroundColor: colors.textMuted }]} />
-                <AppText variant="caption" tone="muted" numberOfLines={1}>
-                  {assigneeName}
-                </AppText>
-              </>
-            ) : null}
+            <View style={[styles.dot, { backgroundColor: colors.textMuted }]} />
+            <AppText variant="caption" tone="muted" numberOfLines={1}>
+              {task.type === 'casa' ? (assigneeName ?? 'Ambos') : task.type === 'compartilhada' ? 'A dois' : 'Cada um'}
+            </AppText>
           </View>
           <AppText variant="caption" tone="muted">
             ⏱ {formatMinutes(task.estimatedMinutes)}
+            {task.type === 'individual' && task.completedBy?.length === 1 && !done
+              ? ' · par já concluiu 👀'
+              : ''}
           </AppText>
         </View>
 
@@ -87,14 +94,26 @@ export function TaskListItem({ task, assigneeName, onPress, onAction, index = 0 
                 ? colors.successSoft
                 : cancelled
                   ? colors.dangerSoft
-                  : colors.primarySoft,
+                  : locked
+                    ? colors.glass
+                    : colors.primarySoft,
             },
           ]}
         >
           <Ionicons
-            name={done ? 'checkmark' : cancelled ? 'close' : inProgress ? 'pause' : 'play'}
+            name={
+              done
+                ? 'checkmark'
+                : cancelled
+                  ? 'close'
+                  : locked
+                    ? 'lock-closed'
+                    : inProgress
+                      ? 'pause'
+                      : 'play'
+            }
             size={18}
-            color={done ? colors.success : cancelled ? colors.danger : colors.primary}
+            color={done ? colors.success : cancelled ? colors.danger : locked ? colors.textMuted : colors.primary}
           />
         </Pressable>
       </Pressable>

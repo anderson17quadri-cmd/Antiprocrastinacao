@@ -8,8 +8,14 @@ import { EmojiBadge } from '@/components/ui/EmojiBadge';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
-import { CATEGORIES, CATEGORY_KEYS, PRIORITIES } from '@/constants/categories';
-import { TaskCategory, TaskDifficulty, TaskPriority, TaskRepeat } from '@/domain/entities';
+import {
+  CATEGORIES,
+  CATEGORY_KEYS,
+  PRIORITIES,
+  TASK_COLORS,
+  TASK_TYPES,
+} from '@/constants/categories';
+import { TaskCategory, TaskDifficulty, TaskPriority, TaskRepeat, TaskType } from '@/domain/entities';
 import { scheduleTaskReminder } from '@/services/notifications';
 import { useAuthStore } from '@/stores/authStore';
 import { useTaskStore } from '@/stores/taskStore';
@@ -17,15 +23,21 @@ import { radius, spacing, useTheme } from '@/theme';
 import { todayKey } from '@/utils/date';
 
 interface FormValues {
+  type: TaskType;
   title: string;
-  description: string;
+  notes: string;
+  emoji: string;
+  color: string;
   category: TaskCategory;
   estimatedMinutes: string;
+  date: string;
   time: string;
-  assigneeId: string;
+  assigneeId: string; // '' = Ambos
   priority: TaskPriority;
   difficulty: TaskDifficulty;
   repeat: TaskRepeat;
+  xp: string;
+  coins: string;
   remind: boolean;
 }
 
@@ -42,7 +54,7 @@ const DIFFICULTIES: { value: TaskDifficulty; label: string; emoji: string }[] = 
   { value: 'dificil', label: 'Difícil', emoji: '🥵' },
 ];
 
-/** Formulário de nova tarefa (React Hook Form). */
+/** Formulário de nova tarefa: primeiro o tipo, depois os detalhes. */
 export default function NewTaskScreen() {
   const { colors } = useTheme();
   const params = useLocalSearchParams<{
@@ -51,6 +63,9 @@ export default function NewTaskScreen() {
     category?: TaskCategory;
     minutes?: string;
     difficulty?: TaskDifficulty;
+    type?: TaskType;
+    xp?: string;
+    coins?: string;
   }>();
   const user = useAuthStore((s) => s.user);
   const partner = useAuthStore((s) => s.partner);
@@ -58,40 +73,55 @@ export default function NewTaskScreen() {
 
   const { control, handleSubmit, watch, setValue } = useForm<FormValues>({
     defaultValues: {
+      type: params.type ?? 'casa',
       title: params.title ?? '',
-      description: '',
+      notes: '',
+      emoji: params.emoji ?? '',
+      color: '',
       category: params.category ?? 'casa',
       estimatedMinutes: params.minutes ?? '40',
+      date: todayKey(),
       time: '16:00',
-      assigneeId: user?.id ?? '',
+      assigneeId: '',
       priority: 'media',
       difficulty: params.difficulty ?? 'media',
       repeat: 'nunca',
+      xp: params.xp ?? '',
+      coins: params.coins ?? '',
       remind: true,
     },
   });
 
+  const type = watch('type');
   const category = watch('category');
-  const emoji = params.emoji ?? CATEGORIES[category].emoji;
+  const emoji = watch('emoji') || CATEGORIES[category].emoji;
+  const color = watch('color') || CATEGORIES[category].color;
 
   const onSubmit = handleSubmit(async (values) => {
+    const xp = parseInt(values.xp, 10);
+    const coins = parseInt(values.coins, 10);
     const task = addTask({
+      type: values.type,
       title: values.title,
-      description: values.description || undefined,
+      notes: values.notes || undefined,
       emoji,
+      color: values.color || undefined,
       category: values.category,
-      date: todayKey(),
+      date: values.date || todayKey(),
       time: values.time || undefined,
       estimatedMinutes: Math.max(5, parseInt(values.estimatedMinutes, 10) || 30),
-      assigneeId: values.assigneeId || undefined,
+      // Individual/compartilhada pertence aos dois; casa usa o responsável escolhido.
+      assigneeId: values.type === 'casa' && values.assigneeId ? values.assigneeId : undefined,
       priority: values.priority,
       difficulty: values.difficulty,
       repeat: values.repeat,
+      xp: Number.isFinite(xp) && xp > 0 ? xp : undefined,
+      coins: Number.isFinite(coins) && coins > 0 ? coins : undefined,
     });
 
     if (values.remind && values.time) {
       const [h, m] = values.time.split(':').map(Number);
-      const when = new Date();
+      const when = new Date(`${values.date}T00:00:00`);
       when.setHours(h, m, 0, 0);
       await scheduleTaskReminder(task.title, when);
     }
@@ -126,8 +156,53 @@ export default function NewTaskScreen() {
         </Pressable>
       </View>
 
+      {/* 1. Tipo da tarefa */}
+      <AppText variant="caption" tone="secondary" style={styles.groupLabel}>
+        Tipo de tarefa
+      </AppText>
+      <Controller
+        control={control}
+        name="type"
+        render={({ field }) => (
+          <View style={{ gap: spacing.sm }}>
+            {(Object.keys(TASK_TYPES) as TaskType[]).map((t) => {
+              const meta = TASK_TYPES[t];
+              const active = field.value === t;
+              return (
+                <Pressable
+                  key={t}
+                  onPress={() => field.onChange(t)}
+                  style={[
+                    styles.typeCard,
+                    {
+                      backgroundColor: active ? colors.primarySoft : colors.glass,
+                      borderColor: active ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <AppText style={{ fontSize: 22 }}>{meta.emoji}</AppText>
+                  <View style={{ flex: 1 }}>
+                    <AppText variant="subheading" weight="semibold">
+                      {meta.label}
+                    </AppText>
+                    <AppText variant="caption" tone="secondary">
+                      {meta.description}
+                    </AppText>
+                  </View>
+                  <Ionicons
+                    name={active ? 'radio-button-on' : 'radio-button-off'}
+                    size={20}
+                    color={active ? colors.primary : colors.textMuted}
+                  />
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+      />
+
       <View style={styles.hero}>
-        <EmojiBadge emoji={emoji} tint={CATEGORIES[category].color} size={72} />
+        <EmojiBadge emoji={emoji} tint={color} size={72} />
       </View>
 
       <Controller
@@ -145,19 +220,6 @@ export default function NewTaskScreen() {
         )}
       />
 
-      <Controller
-        control={control}
-        name="description"
-        render={({ field }) => (
-          <TextField
-            label="Descrição (opcional)"
-            placeholder="Detalhes da tarefa…"
-            value={field.value}
-            onChangeText={field.onChange}
-          />
-        )}
-      />
-
       <AppText variant="caption" tone="secondary" style={styles.groupLabel}>
         Categoria
       </AppText>
@@ -170,6 +232,65 @@ export default function NewTaskScreen() {
           </Pressable>
         ))}
       </ScrollView>
+
+      {/* Responsável — apenas tarefas da casa */}
+      {type === 'casa' ? (
+        <>
+          <AppText variant="caption" tone="secondary" style={styles.groupLabel}>
+            Responsável
+          </AppText>
+          <Controller
+            control={control}
+            name="assigneeId"
+            render={({ field }) => (
+              <View style={styles.chipRow}>
+                <Pressable onPress={() => field.onChange('')} style={chip(field.value === '')}>
+                  <AppText variant="caption" weight="semibold" style={chipText(field.value === '')}>
+                    👫 Ambos
+                  </AppText>
+                </Pressable>
+                {[user, partner].filter(Boolean).map((member) => (
+                  <Pressable
+                    key={member!.id}
+                    onPress={() => field.onChange(member!.id)}
+                    style={chip(field.value === member!.id)}
+                  >
+                    <AppText variant="caption" weight="semibold" style={chipText(field.value === member!.id)}>
+                      {member!.name}
+                    </AppText>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          />
+          <AppText variant="caption" tone="muted" style={{ marginTop: 6, marginLeft: 4 }}>
+            {watch('assigneeId') === ''
+              ? 'Qualquer um dos dois pode concluir.'
+              : 'Somente o responsável escolhido poderá concluir.'}
+          </AppText>
+        </>
+      ) : null}
+
+      <View style={styles.rowFields}>
+        <View style={{ flex: 1 }}>
+          <Controller
+            control={control}
+            name="date"
+            render={({ field }) => (
+              <TextField label="Data" placeholder="2026-07-16" value={field.value} onChangeText={field.onChange} />
+            )}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Controller
+            control={control}
+            name="time"
+            render={({ field }) => (
+              <TextField label="Horário" placeholder="16:00" value={field.value} onChangeText={field.onChange} />
+            )}
+          />
+        </View>
+      </View>
 
       <View style={styles.rowFields}>
         <View style={{ flex: 1 }}>
@@ -190,11 +311,27 @@ export default function NewTaskScreen() {
         <View style={{ flex: 1 }}>
           <Controller
             control={control}
-            name="time"
+            name="xp"
             render={({ field }) => (
               <TextField
-                label="Horário"
-                placeholder="16:00"
+                label="XP (auto se vazio)"
+                placeholder="40"
+                keyboardType="number-pad"
+                value={field.value}
+                onChangeText={field.onChange}
+              />
+            )}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Controller
+            control={control}
+            name="coins"
+            render={({ field }) => (
+              <TextField
+                label="Moedas 🪙"
+                placeholder="20"
+                keyboardType="number-pad"
                 value={field.value}
                 onChangeText={field.onChange}
               />
@@ -204,27 +341,41 @@ export default function NewTaskScreen() {
       </View>
 
       <AppText variant="caption" tone="secondary" style={styles.groupLabel}>
-        Responsável
+        Ícone e cor
       </AppText>
-      <Controller
-        control={control}
-        name="assigneeId"
-        render={({ field }) => (
-          <View style={styles.chipRow}>
-            {[user, partner].filter(Boolean).map((member) => (
-              <Pressable
-                key={member!.id}
-                onPress={() => field.onChange(member!.id)}
-                style={chip(field.value === member!.id)}
-              >
-                <AppText variant="caption" weight="semibold" style={chipText(field.value === member!.id)}>
-                  {member!.name}
-                </AppText>
-              </Pressable>
-            ))}
-          </View>
-        )}
-      />
+      <View style={styles.rowFields}>
+        <View style={{ width: 96 }}>
+          <Controller
+            control={control}
+            name="emoji"
+            render={({ field }) => (
+              <TextField placeholder={CATEGORIES[category].emoji} value={field.value} onChangeText={field.onChange} />
+            )}
+          />
+        </View>
+        <Controller
+          control={control}
+          name="color"
+          render={({ field }) => (
+            <View style={styles.colorRow}>
+              {TASK_COLORS.map((c) => {
+                const active = field.value === c;
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => field.onChange(active ? '' : c)}
+                    style={[
+                      styles.colorDot,
+                      { backgroundColor: c },
+                      active && { borderWidth: 3, borderColor: colors.text },
+                    ]}
+                  />
+                );
+              })}
+            </View>
+          )}
+        />
+      </View>
 
       <AppText variant="caption" tone="secondary" style={styles.groupLabel}>
         Dificuldade
@@ -285,6 +436,22 @@ export default function NewTaskScreen() {
 
       <Controller
         control={control}
+        name="notes"
+        render={({ field }) => (
+          <View style={{ marginTop: spacing.md }}>
+            <TextField
+              label="Notas"
+              placeholder="Observações do casal…"
+              value={field.value}
+              onChangeText={field.onChange}
+              multiline
+            />
+          </View>
+        )}
+      />
+
+      <Controller
+        control={control}
         name="remind"
         render={({ field }) => (
           <View style={styles.remindRow}>
@@ -313,9 +480,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.lg,
   },
+  typeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderWidth: 1.5,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
   hero: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginVertical: spacing.xl,
   },
   groupLabel: {
     marginTop: spacing.md,
@@ -337,6 +512,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
     marginTop: spacing.md,
+    alignItems: 'center',
+  },
+  colorRow: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  colorDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
   },
   remindRow: {
     flexDirection: 'row',

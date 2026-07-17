@@ -26,6 +26,8 @@ export default function HouseScreen() {
         category: tpl.category,
         minutes: String(tpl.estimatedMinutes),
         difficulty: tpl.difficulty,
+        type: 'casa',
+        xp: String(tpl.xp),
       },
     });
   };

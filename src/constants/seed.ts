@@ -6,6 +6,7 @@ import {
   TaskDifficulty,
   TaskPriority,
   TaskRepeat,
+  TaskType,
 } from '@/domain/entities';
 
 export interface ScheduleTemplate {
@@ -13,6 +14,7 @@ export interface ScheduleTemplate {
   title: string;
   emoji: string;
   category: TaskCategory;
+  type: TaskType;
   estimatedMinutes: number;
   difficulty: TaskDifficulty;
   xp: number;
@@ -20,16 +22,16 @@ export interface ScheduleTemplate {
 
 /** Cronograma padrão do dia — totalmente personalizável pelo casal. */
 export const DEFAULT_SCHEDULE: ScheduleTemplate[] = [
-  { time: '07:00', title: 'Acordar', emoji: '⏰', category: 'rotina', estimatedMinutes: 15, difficulty: 'facil', xp: 10 },
-  { time: '07:30', title: 'Arrumar cama', emoji: '🛏️', category: 'casa', estimatedMinutes: 10, difficulty: 'facil', xp: 10 },
-  { time: '08:00', title: 'Pequeno-almoço', emoji: '☕', category: 'refeicao', estimatedMinutes: 30, difficulty: 'facil', xp: 15 },
-  { time: '09:00', title: 'Trabalho', emoji: '💼', category: 'trabalho', estimatedMinutes: 180, difficulty: 'dificil', xp: 60 },
-  { time: '12:30', title: 'Almoço', emoji: '🍽️', category: 'refeicao', estimatedMinutes: 60, difficulty: 'media', xp: 30 },
-  { time: '14:00', title: 'Limpeza rápida', emoji: '🧹', category: 'casa', estimatedMinutes: 30, difficulty: 'facil', xp: 20 },
-  { time: '18:30', title: 'Jantar', emoji: '🍲', category: 'refeicao', estimatedMinutes: 60, difficulty: 'media', xp: 30 },
-  { time: '20:00', title: 'Organizar casa', emoji: '🏠', category: 'casa', estimatedMinutes: 45, difficulty: 'media', xp: 80 },
-  { time: '21:00', title: 'Tempo do casal', emoji: '❤️', category: 'casal', estimatedMinutes: 90, difficulty: 'facil', xp: 25 },
-  { time: '22:30', title: 'Dormir', emoji: '🌙', category: 'rotina', estimatedMinutes: 15, difficulty: 'facil', xp: 10 },
+  { time: '07:00', title: 'Acordar', emoji: '⏰', category: 'rotina', type: 'individual', estimatedMinutes: 15, difficulty: 'facil', xp: 10 },
+  { time: '07:30', title: 'Arrumar cama', emoji: '🛏️', category: 'casa', type: 'casa', estimatedMinutes: 10, difficulty: 'facil', xp: 10 },
+  { time: '08:00', title: 'Pequeno-almoço', emoji: '☕', category: 'cozinha', type: 'casa', estimatedMinutes: 30, difficulty: 'facil', xp: 15 },
+  { time: '09:00', title: 'Trabalho', emoji: '💼', category: 'trabalho', type: 'individual', estimatedMinutes: 180, difficulty: 'dificil', xp: 60 },
+  { time: '12:30', title: 'Almoço', emoji: '🍽️', category: 'cozinha', type: 'casa', estimatedMinutes: 60, difficulty: 'media', xp: 30 },
+  { time: '14:00', title: 'Limpeza rápida', emoji: '🧹', category: 'casa', type: 'casa', estimatedMinutes: 30, difficulty: 'facil', xp: 20 },
+  { time: '18:30', title: 'Jantar', emoji: '🍲', category: 'cozinha', type: 'casa', estimatedMinutes: 60, difficulty: 'media', xp: 30 },
+  { time: '20:00', title: 'Organizar casa', emoji: '🏠', category: 'casa', type: 'casa', estimatedMinutes: 45, difficulty: 'media', xp: 80 },
+  { time: '21:00', title: 'Tempo do casal', emoji: '❤️', category: 'casal', type: 'compartilhada', estimatedMinutes: 90, difficulty: 'facil', xp: 25 },
+  { time: '22:30', title: 'Dormir', emoji: '🌙', category: 'rotina', type: 'individual', estimatedMinutes: 15, difficulty: 'facil', xp: 10 },
 ];
 
 export interface HouseTaskTemplate {
@@ -45,21 +47,23 @@ export interface HouseTaskTemplate {
 
 /** Lista pronta de tarefas da casa, com XP por dificuldade. */
 export const HOUSE_TASKS: HouseTaskTemplate[] = [
-  { title: 'Lavar roupa', emoji: '🧺', category: 'casa', estimatedMinutes: 60, priority: 'media', repeat: 'semanalmente', difficulty: 'media', xp: 40 },
-  { title: 'Dobrar roupa', emoji: '👕', category: 'casa', estimatedMinutes: 25, priority: 'baixa', repeat: 'semanalmente', difficulty: 'facil', xp: 20 },
-  { title: 'Passar roupa', emoji: '🔥', category: 'casa', estimatedMinutes: 40, priority: 'baixa', repeat: 'semanalmente', difficulty: 'media', xp: 35 },
-  { title: 'Limpar cozinha', emoji: '🍳', category: 'casa', estimatedMinutes: 45, priority: 'alta', repeat: 'diariamente', difficulty: 'media', xp: 40 },
-  { title: 'Lavar louça', emoji: '🍽️', category: 'casa', estimatedMinutes: 30, priority: 'alta', repeat: 'diariamente', difficulty: 'facil', xp: 20 },
-  { title: 'Fazer almoço', emoji: '🥗', category: 'refeicao', estimatedMinutes: 60, priority: 'alta', repeat: 'diariamente', difficulty: 'media', xp: 40 },
-  { title: 'Fazer jantar', emoji: '🍲', category: 'refeicao', estimatedMinutes: 60, priority: 'alta', repeat: 'diariamente', difficulty: 'media', xp: 40 },
+  { title: 'Lavar roupa', emoji: '🧺', category: 'lavandaria', estimatedMinutes: 60, priority: 'media', repeat: 'semanalmente', difficulty: 'media', xp: 40 },
+  { title: 'Dobrar roupa', emoji: '👕', category: 'lavandaria', estimatedMinutes: 25, priority: 'baixa', repeat: 'semanalmente', difficulty: 'facil', xp: 20 },
+  { title: 'Passar roupa', emoji: '🔥', category: 'lavandaria', estimatedMinutes: 40, priority: 'baixa', repeat: 'semanalmente', difficulty: 'media', xp: 35 },
+  { title: 'Limpar cozinha', emoji: '🍳', category: 'cozinha', estimatedMinutes: 45, priority: 'alta', repeat: 'diariamente', difficulty: 'media', xp: 40 },
+  { title: 'Lavar louça', emoji: '🍽️', category: 'cozinha', estimatedMinutes: 30, priority: 'alta', repeat: 'diariamente', difficulty: 'facil', xp: 20 },
+  { title: 'Fazer almoço', emoji: '🥗', category: 'cozinha', estimatedMinutes: 60, priority: 'alta', repeat: 'diariamente', difficulty: 'media', xp: 40 },
+  { title: 'Fazer jantar', emoji: '🍲', category: 'cozinha', estimatedMinutes: 60, priority: 'alta', repeat: 'diariamente', difficulty: 'media', xp: 40 },
   { title: 'Varrer', emoji: '🧹', category: 'casa', estimatedMinutes: 20, priority: 'media', repeat: 'diariamente', difficulty: 'facil', xp: 15 },
   { title: 'Passar pano', emoji: '🪣', category: 'casa', estimatedMinutes: 40, priority: 'media', repeat: 'semanalmente', difficulty: 'media', xp: 35 },
   { title: 'Limpar banheiro', emoji: '🚿', category: 'casa', estimatedMinutes: 30, priority: 'alta', repeat: 'semanalmente', difficulty: 'dificil', xp: 50 },
+  { title: 'Limpar janelas', emoji: '🪟', category: 'casa', estimatedMinutes: 45, priority: 'baixa', repeat: 'mensalmente', difficulty: 'dificil', xp: 50 },
+  { title: 'Aspirar casa', emoji: '🌀', category: 'casa', estimatedMinutes: 40, priority: 'media', repeat: 'semanalmente', difficulty: 'media', xp: 35 },
   { title: 'Organizar quarto', emoji: '🛏️', category: 'casa', estimatedMinutes: 30, priority: 'media', repeat: 'semanalmente', difficulty: 'facil', xp: 25 },
   { title: 'Trocar lixo', emoji: '🗑️', category: 'casa', estimatedMinutes: 5, priority: 'alta', repeat: 'diariamente', difficulty: 'facil', xp: 10 },
-  { title: 'Regar plantas', emoji: '🪴', category: 'casa', estimatedMinutes: 10, priority: 'baixa', repeat: 'diariamente', difficulty: 'facil', xp: 10 },
-  { title: 'Passear com cachorro', emoji: '🐶', category: 'saude', estimatedMinutes: 30, priority: 'media', repeat: 'diariamente', difficulty: 'facil', xp: 25 },
-  { title: 'Mercado', emoji: '🛒', category: 'mercado', estimatedMinutes: 90, priority: 'media', repeat: 'semanalmente', difficulty: 'dificil', xp: 60 },
+  { title: 'Regar plantas', emoji: '🪴', category: 'jardim', estimatedMinutes: 10, priority: 'baixa', repeat: 'diariamente', difficulty: 'facil', xp: 10 },
+  { title: 'Passear com cachorro', emoji: '🐶', category: 'pets', estimatedMinutes: 30, priority: 'media', repeat: 'diariamente', difficulty: 'facil', xp: 25 },
+  { title: 'Mercado', emoji: '🛒', category: 'compras', estimatedMinutes: 90, priority: 'media', repeat: 'semanalmente', difficulty: 'dificil', xp: 60 },
 ];
 
 /** Conquistas / medalhas do casal (baseadas na sequência). */

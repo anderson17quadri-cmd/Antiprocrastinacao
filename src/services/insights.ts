@@ -7,7 +7,8 @@
  * conforme o histórico cresce; a mesma interface permite plugar um
  * modelo remoto (ex.: API da Anthropic) no futuro.
  */
-import { Task, UserProfile } from '@/domain/entities';
+import { Task, TaskCategory, UserProfile } from '@/domain/entities';
+import { LIBRARY, LibraryTask } from '@/constants/library';
 import { dayjs, todayKey } from '@/utils/date';
 
 export interface Insight {
@@ -16,6 +17,46 @@ export interface Insight {
   title: string;
   message: string;
   kind: 'horario' | 'divisao' | 'lembrete' | 'esquecida' | 'resumo' | 'dica';
+}
+
+/**
+ * Sugestões automáticas de tarefas com base na rotina do casal:
+ * prioriza as categorias que eles mais concluem e evita repetir o que
+ * já está agendado para hoje. Sem histórico, sugere um kit inicial.
+ */
+export function suggestTasks(tasks: Task[], limit = 6): LibraryTask[] {
+  const today = todayKey();
+  const todayTitles = new Set(tasks.filter((t) => t.date === today).map((t) => t.title));
+
+  const byCategory = new Map<TaskCategory, number>();
+  tasks
+    .filter((t) => t.status === 'done')
+    .forEach((t) => byCategory.set(t.category, (byCategory.get(t.category) ?? 0) + 1));
+
+  const favoriteCategories = [...byCategory.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([category]) => category);
+
+  const pool =
+    favoriteCategories.length > 0
+      ? [...LIBRARY].sort((a, b) => {
+          const ai = favoriteCategories.indexOf(a.category);
+          const bi = favoriteCategories.indexOf(b.category);
+          return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+        })
+      : LIBRARY.filter((t) => ['casa', 'casal', 'saude', 'pessoal'].includes(t.category));
+
+  const suggestions: LibraryTask[] = [];
+  const seenCategories = new Map<TaskCategory, number>();
+  for (const item of pool) {
+    if (todayTitles.has(item.title)) continue;
+    const used = seenCategories.get(item.category) ?? 0;
+    if (used >= 2) continue; // variedade entre categorias
+    suggestions.push(item);
+    seenCategories.set(item.category, used + 1);
+    if (suggestions.length >= limit) break;
+  }
+  return suggestions;
 }
 
 function completionHourHistogram(tasks: Task[]): Map<number, number> {

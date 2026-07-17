@@ -9,7 +9,8 @@ import { EmojiBadge } from '@/components/ui/EmojiBadge';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { Screen } from '@/components/ui/Screen';
-import { CATEGORIES } from '@/constants/categories';
+import { CATEGORIES, TASK_TYPES } from '@/constants/categories';
+import { completionBlockReason, isDoneFor } from '@/domain/taskRules';
 import { useNow } from '@/hooks/useNow';
 import { useAuthStore } from '@/stores/authStore';
 import { useTaskStore } from '@/stores/taskStore';
@@ -43,14 +44,22 @@ export default function TaskDetailScreen() {
   }
 
   const category = CATEGORIES[task.category];
+  const tint = task.color ?? category.color;
+  const typeMeta = TASK_TYPES[task.type];
   const isActive = timer.activeTaskId === task.id;
   const elapsed = isActive ? timer.elapsed() : task.spentSeconds;
   const estimatedSeconds = task.estimatedMinutes * 60;
   const ringProgress = estimatedSeconds > 0 ? Math.min(1, elapsed / estimatedSeconds) : 0;
   const assigneeName =
-    task.assigneeId === user.id ? user.name : task.assigneeId === partner?.id ? partner?.name : 'Casal';
+    task.assigneeId === user.id ? user.name : task.assigneeId === partner?.id ? partner?.name : 'Ambos';
+  const doneForMe = isDoneFor(task, user.id);
+  const blockReason = completionBlockReason(task, user.id, assigneeName);
 
   const handleStart = () => {
+    if (blockReason) {
+      Alert.alert('Tarefa bloqueada', blockReason);
+      return;
+    }
     startTask(task.id, user);
     timer.start(task.id);
   };
@@ -61,9 +70,14 @@ export default function TaskDetailScreen() {
   };
 
   const handleComplete = () => {
+    if (blockReason) {
+      Alert.alert('Tarefa bloqueada', blockReason);
+      return;
+    }
     const spent = isActive ? timer.stop() : task.spentSeconds;
-    completeTask(task.id, user, spent);
-    router.back();
+    if (completeTask(task.id, user, spent)) {
+      router.back();
+    }
   };
 
   const handleCancel = () => {
@@ -84,13 +98,15 @@ export default function TaskDetailScreen() {
   const statusLabel =
     task.status === 'done'
       ? 'Concluída ✅'
-      : task.status === 'cancelled'
-        ? 'Cancelada'
-        : isActive && timer.running
-          ? 'Em andamento…'
-          : isActive
-            ? 'Pausada'
-            : 'Pendente';
+      : doneForMe
+        ? 'Sua parte concluída ✅ — o par ainda está pendente'
+        : task.status === 'cancelled'
+          ? 'Cancelada'
+          : isActive && timer.running
+            ? 'Em andamento…'
+            : isActive
+              ? 'Pausada'
+              : 'Pendente';
 
   return (
     <Screen bottomInset={20}>
@@ -107,7 +123,7 @@ export default function TaskDetailScreen() {
       </View>
 
       <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
-        <EmojiBadge emoji={task.emoji} tint={category.color} size={88} />
+        <EmojiBadge emoji={task.emoji} tint={tint} size={88} />
         <AppText variant="title" style={styles.title}>
           {task.title}
         </AppText>
@@ -124,10 +140,19 @@ export default function TaskDetailScreen() {
       <Card index={1} style={styles.metaCard}>
         <View style={styles.metaRow}>
           <AppText variant="body" tone="secondary">
+            Tipo
+          </AppText>
+          <AppText variant="subheading" weight="semibold">
+            {typeMeta.emoji} {typeMeta.label}
+          </AppText>
+        </View>
+        <View style={[styles.metaDivider, { backgroundColor: colors.border }]} />
+        <View style={styles.metaRow}>
+          <AppText variant="body" tone="secondary">
             Responsável
           </AppText>
           <AppText variant="subheading" weight="semibold">
-            {assigneeName}
+            {task.type === 'individual' ? 'Cada um' : task.type === 'compartilhada' ? 'A dois' : assigneeName}
           </AppText>
         </View>
         <View style={[styles.metaDivider, { backgroundColor: colors.border }]} />
@@ -148,6 +173,17 @@ export default function TaskDetailScreen() {
             {category.emoji} {category.label}
           </AppText>
         </View>
+        {task.notes ? (
+          <>
+            <View style={[styles.metaDivider, { backgroundColor: colors.border }]} />
+            <View style={{ gap: 4 }}>
+              <AppText variant="body" tone="secondary">
+                Notas
+              </AppText>
+              <AppText variant="body">{task.notes}</AppText>
+            </View>
+          </>
+        ) : null}
       </Card>
 
       {/* Cronômetro */}
@@ -164,7 +200,11 @@ export default function TaskDetailScreen() {
           </View>
         </ProgressRing>
 
-        {task.status === 'pending' || task.status === 'cancelled' ? (
+        {doneForMe && task.status !== 'done' ? (
+          <AppText variant="body" tone="success" weight="semibold" style={{ textAlign: 'center' }}>
+            Você já concluiu a sua parte 🎉{'\n'}Aguardando {partner?.name ?? 'seu par'}…
+          </AppText>
+        ) : task.status === 'pending' || task.status === 'cancelled' ? (
           <PrimaryButton label="Iniciar" icon="play" onPress={handleStart} style={styles.fullWidth} />
         ) : task.status === 'in_progress' ? (
           <View style={styles.timerActions}>
