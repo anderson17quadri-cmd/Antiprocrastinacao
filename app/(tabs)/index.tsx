@@ -84,10 +84,13 @@ export default function HomeScreen() {
         {/* Cabeçalho */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <AppText variant="title">
-              {hello.text}, {user?.name?.split(' ')[0] ?? 'Casal'} {hello.emoji}
+            <AppText variant="body" tone="secondary">
+              {hello.text},
             </AppText>
-            <AppText variant="body" tone="secondary" style={{ marginTop: 2 }}>
+            <AppText variant="title" numberOfLines={1} adjustsFontSizeToFit>
+              {user?.name?.split(' ')[0] ?? 'Casal'} {hello.emoji}
+            </AppText>
+            <AppText variant="caption" tone="muted" style={{ marginTop: 3 }}>
               {fullDate(dayjs(selectedDate))}
             </AppText>
           </View>
@@ -128,9 +131,9 @@ export default function HomeScreen() {
 
         {/* Estatísticas */}
         <View style={styles.stats}>
-          <StatCard emoji="🔥" value={`${user?.streakDays ?? 0}`} label="Sequência" detail="dias" index={1} />
-          <StatCard emoji="🏆" value={formatPoints(score)} label="Pontuação" detail="pontos" index={2} />
-          <StatCard emoji="❤️" value={`${productivity}%`} label="Produtividade" detail={productivity >= 80 ? 'ótimo' : productivity >= 50 ? 'bom' : 'vamos lá'} index={3} />
+          <StatCard emoji="🔥" tint="#F97316" value={`${user?.streakDays ?? 0} dias`} label="Sequência" index={1} />
+          <StatCard emoji="🏆" tint="#FBBF24" value={formatPoints(score)} label="Pontuação" index={2} />
+          <StatCard emoji="❤️" tint="#F472B6" value={`${productivity}%`} label="Produtividade" detail={productivity >= 80 ? 'ótimo' : productivity >= 50 ? 'bom' : 'vamos lá'} index={3} />
         </View>
 
         {/* Tarefas de hoje */}

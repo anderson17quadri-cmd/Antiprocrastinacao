@@ -143,43 +143,52 @@ export default function ReportsScreen() {
 
       <View style={styles.grid}>
         <Card index={0} style={styles.tile}>
+          <View style={[styles.tileChip, { backgroundColor: colors.successSoft }]}>
+            <AppText style={styles.tileEmoji}>✅</AppText>
+          </View>
           <AppText variant="caption" tone="secondary">
             Tarefas concluídas
           </AppText>
-          <AppText variant="title" weight="extrabold">
+          <AppText variant="heading" weight="extrabold" numberOfLines={1} adjustsFontSizeToFit>
             {completed}
           </AppText>
           <View style={styles.trend}>
-            <Ionicons name="trending-up" size={14} color={colors.success} />
-            <AppText variant="caption" tone="success">
+            <Ionicons name="trending-up" size={13} color={colors.success} />
+            <AppText variant="caption" tone="success" style={{ fontSize: 11 }}>
               constância é tudo
             </AppText>
           </View>
         </Card>
         <Card index={1} style={styles.tile}>
+          <View style={[styles.tileChip, { backgroundColor: colors.primarySoft }]}>
+            <AppText style={styles.tileEmoji}>⏱️</AppText>
+          </View>
           <AppText variant="caption" tone="secondary">
             Horas produtivas
           </AppText>
-          <AppText variant="title" weight="extrabold">
+          <AppText variant="heading" weight="extrabold" numberOfLines={1} adjustsFontSizeToFit>
             {formatHours(productive)}
           </AppText>
           <View style={styles.trend}>
-            <Ionicons name="trending-up" size={14} color={colors.success} />
-            <AppText variant="caption" tone="success">
+            <Ionicons name="trending-up" size={13} color={colors.success} />
+            <AppText variant="caption" tone="success" style={{ fontSize: 11 }}>
               tempo focado
             </AppText>
           </View>
         </Card>
         <Card index={2} style={styles.tile}>
+          <View style={[styles.tileChip, { backgroundColor: colors.dangerSoft }]}>
+            <AppText style={styles.tileEmoji}>🐌</AppText>
+          </View>
           <AppText variant="caption" tone="secondary">
             Tempo desperdiçado
           </AppText>
-          <AppText variant="title" weight="extrabold">
+          <AppText variant="heading" weight="extrabold" numberOfLines={1} adjustsFontSizeToFit>
             {formatHours(wasted)}
           </AppText>
           <View style={styles.trend}>
-            <Ionicons name="trending-down" size={14} color={colors.danger} />
-            <AppText variant="caption" tone="danger">
+            <Ionicons name="trending-down" size={13} color={colors.danger} />
+            <AppText variant="caption" tone="danger" style={{ fontSize: 11 }}>
               tarefas canceladas
             </AppText>
           </View>
@@ -309,6 +318,17 @@ const styles = StyleSheet.create({
     width: '48%',
     flexGrow: 1,
     gap: 4,
+  },
+  tileChip: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  tileEmoji: {
+    fontSize: 16,
   },
   ringTile: {
     alignItems: 'center',
