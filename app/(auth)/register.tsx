@@ -30,7 +30,8 @@ export default function RegisterScreen() {
     try {
       setLoading(true);
       await signUp(name.trim(), email.trim(), password);
-      router.replace('/(auth)/pair');
+      // Primeiro a rotina pessoal (agenda), depois o pareamento do casal.
+      router.replace({ pathname: '/routine', params: { next: 'pair' } });
     } catch {
       Alert.alert('Não foi possível criar a conta', 'Tente novamente em instantes.');
     } finally {

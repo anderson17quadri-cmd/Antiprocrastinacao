@@ -16,10 +16,15 @@ export function isDoneFor(task: Task, userId: string): boolean {
   return task.status === 'done';
 }
 
-/** Este usuário pode concluir esta tarefa? */
+/**
+ * Tarefa individual com assigneeId é da agenda PESSOAL de um membro
+ * (ex.: "Trabalho" da Juliana): só o dono conclui. Sem assigneeId,
+ * é individual para os dois (cada um conclui a sua parte).
+ */
 export function canComplete(task: Task, userId: string): boolean {
   if (task.status === 'done' || task.status === 'cancelled') return false;
   if (task.type === 'individual') {
+    if (task.assigneeId && task.assigneeId !== userId) return false;
     return !(task.completedBy ?? []).includes(userId);
   }
   if (task.type === 'casa') {
@@ -30,8 +35,8 @@ export function canComplete(task: Task, userId: string): boolean {
 
 /** Motivo pelo qual a conclusão está bloqueada (para feedback na UI). */
 export function completionBlockReason(task: Task, userId: string, assigneeName?: string): string | null {
-  if (task.type === 'casa' && task.assigneeId && task.assigneeId !== userId) {
-    return `Somente ${assigneeName ?? 'o responsável'} pode concluir esta tarefa.`;
+  if (task.assigneeId && task.assigneeId !== userId && task.type !== 'compartilhada') {
+    return `Esta tarefa é de ${assigneeName ?? 'seu par'} — somente essa pessoa pode concluí-la.`;
   }
   if (task.type === 'individual' && (task.completedBy ?? []).includes(userId)) {
     return 'Você já concluiu a sua parte desta tarefa.';
@@ -54,7 +59,9 @@ export function applyCompletion(
 
   if (task.type === 'individual') {
     const completedBy = [...new Set([...(task.completedBy ?? []), userId])];
-    const everyoneDone = memberIds.length > 0 && memberIds.every((id) => completedBy.includes(id));
+    // Pessoal (com dono): basta o dono concluir; individual do casal: os dois.
+    const relevant = task.assigneeId ? [task.assigneeId] : memberIds;
+    const everyoneDone = relevant.length > 0 && relevant.every((id) => completedBy.includes(id));
     return {
       ...task,
       completedBy,

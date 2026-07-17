@@ -135,6 +135,7 @@ export default function SettingsScreen() {
       </View>
 
       <Card animated={false} style={styles.group}>
+        <Row icon="calendar-outline" label="Minha rotina" onPress={() => router.push('/routine')} />
         <Row icon="moon-outline" label="Tema" value={THEME_LABELS[settings.theme]} onPress={cycleTheme} />
         <Row
           icon="language-outline"

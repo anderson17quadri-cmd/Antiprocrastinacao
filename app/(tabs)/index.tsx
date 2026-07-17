@@ -16,6 +16,7 @@ import { coupleScore } from '@/domain/gamification';
 import { completionBlockReason, isDoneFor } from '@/domain/taskRules';
 import { completionRatio, tasksForDate } from '@/domain/stats';
 import { useAuthStore } from '@/stores/authStore';
+import { useRoutineStore } from '@/stores/routineStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useTimerStore } from '@/stores/timerStore';
 import { spacing, useTheme } from '@/theme';
@@ -32,6 +33,7 @@ export default function HomeScreen() {
   const startTask = useTaskStore((s) => s.startTask);
   const completeTask = useTaskStore((s) => s.completeTask);
   const timer = useTimerStore();
+  const hasRoutine = useRoutineStore((s) => Boolean(user && s.routines[user.id]));
 
   const [selectedDate, setSelectedDate] = useState(todayKey());
 
@@ -112,6 +114,22 @@ export default function HomeScreen() {
         <View style={styles.week}>
           <WeekStrip selected={selectedDate} onSelect={setSelectedDate} />
         </View>
+
+        {/* Configurar rotina (primeiro acesso) */}
+        {!hasRoutine ? (
+          <Card index={0} style={styles.routineBanner} onPress={() => router.push('/routine')}>
+            <AppText style={{ fontSize: 28 }}>🗓️</AppText>
+            <View style={{ flex: 1 }}>
+              <AppText variant="subheading" weight="semibold">
+                Monte sua rotina
+              </AppText>
+              <AppText variant="caption" tone="secondary">
+                Defina seus horários, trabalho e hábitos — sua agenda diária é criada sozinha.
+              </AppText>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+          </Card>
+        ) : null}
 
         {/* Progresso do dia */}
         <Card index={0}>
@@ -197,6 +215,12 @@ const styles = StyleSheet.create({
   },
   week: {
     marginBottom: spacing.lg,
+  },
+  routineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
   progressHeader: {
     flexDirection: 'row',

@@ -30,7 +30,12 @@ export function TaskListItem({ task, assigneeName, currentUserId, onPress, onAct
   const cancelled = task.status === 'cancelled';
   const inProgress = task.status === 'in_progress' && !done;
   const locked = Boolean(
-    currentUserId && !done && !cancelled && !canComplete(task, currentUserId) && task.type === 'casa',
+    currentUserId &&
+      !done &&
+      !cancelled &&
+      !canComplete(task, currentUserId) &&
+      task.assigneeId &&
+      task.assigneeId !== currentUserId,
   );
   const typeMeta = TASK_TYPES[task.type];
 
@@ -73,7 +78,13 @@ export function TaskListItem({ task, assigneeName, currentUserId, onPress, onAct
             </AppText>
             <View style={[styles.dot, { backgroundColor: colors.textMuted }]} />
             <AppText variant="caption" tone="muted" numberOfLines={1}>
-              {task.type === 'casa' ? (assigneeName ?? 'Ambos') : task.type === 'compartilhada' ? 'A dois' : 'Cada um'}
+              {task.type === 'compartilhada'
+                ? 'A dois'
+                : task.assigneeId
+                  ? (assigneeName ?? 'Par')
+                  : task.type === 'casa'
+                    ? 'Ambos'
+                    : 'Cada um'}
             </AppText>
           </View>
           <AppText variant="caption" tone="muted">

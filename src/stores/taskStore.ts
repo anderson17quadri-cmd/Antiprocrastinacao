@@ -13,7 +13,8 @@ import {
 } from '@/domain/entities';
 import { coinsForTask, xpForTask } from '@/domain/gamification';
 import { applyCompletion } from '@/domain/taskRules';
-import { DEFAULT_SCHEDULE } from '@/constants/seed';
+import { ScheduleItem, buildPersonalSchedule, buildSharedSchedule } from '@/domain/schedule';
+import { useRoutineStore } from './routineStore';
 import { newId } from '@/utils/id';
 import { notifyPartner } from '@/services/notifications';
 import { pushTask, pushActivity } from '@/services/sync';
@@ -42,8 +43,10 @@ interface TaskState {
   tasks: Record<string, Task>;
   activity: ActivityEvent[];
   seededDates: string[];
-  /** Semeia o cronograma padrão para um dia ainda sem tarefas. */
+  /** Semeia a agenda do dia (rotinas pessoais + parte do casal). */
   ensureSeeded: (dateKey: string) => void;
+  /** Reaplica a agenda de um dia após mudança de rotina (preserva tarefas manuais e concluídas). */
+  reseedDay: (dateKey: string) => void;
   addTask: (input: NewTaskInput) => Task;
   updateTask: (id: string, patch: Partial<Task>) => void;
   removeTask: (id: string) => void;
@@ -86,30 +89,43 @@ export const useTaskStore = create<TaskState>()(
         if (state.seededDates.includes(dateKey)) return;
         const auth = useAuthStore.getState();
         const members = [auth.user, auth.partner].filter(Boolean) as UserProfile[];
+        const routines = useRoutineStore.getState().routines;
         const now = Date.now();
         const seeded: Record<string, Task> = { ...state.tasks };
-        DEFAULT_SCHEDULE.forEach((tpl, index) => {
-          // Individuais e compartilhadas pertencem aos dois; tarefas da casa
-          // alternam o responsável entre os membros do casal.
-          const assigneeId =
-            tpl.type === 'casa' && members.length
-              ? members[index % members.length].id
-              : undefined;
+
+        // Agenda do dia: parte compartilhada do casal + rotina pessoal de cada um.
+        const items: ScheduleItem[] = [];
+        const wake = auth.user ? routines[auth.user.id]?.wakeTime : undefined;
+        items.push(...buildSharedSchedule(wake));
+        if (members.length > 0) {
+          members.forEach((m) => items.push(...buildPersonalSchedule(m.id, routines[m.id], dateKey)));
+        } else {
+          items.push(...buildPersonalSchedule('me', undefined, dateKey));
+        }
+        items.sort((a, b) => a.time.localeCompare(b.time));
+
+        items.forEach((item, index) => {
           const task: Task = {
             id: newId('task'),
-            title: tpl.title,
-            emoji: tpl.emoji,
-            type: tpl.type,
-            category: tpl.category,
+            title: item.title,
+            emoji: item.emoji,
+            type: item.type,
+            category: item.category,
             date: dateKey,
-            time: tpl.time,
-            estimatedMinutes: tpl.estimatedMinutes,
-            assigneeId,
-            completedBy: tpl.type === 'individual' ? [] : undefined,
+            time: item.time,
+            estimatedMinutes: item.estimatedMinutes,
+            // Casa alterna entre os dois; itens pessoais pertencem ao dono da rotina.
+            assigneeId:
+              item.type === 'casa'
+                ? members.length
+                  ? members[index % members.length].id
+                  : undefined
+                : item.ownerId,
+            completedBy: item.type === 'individual' ? [] : undefined,
             status: 'pending',
             priority: 'media',
-            difficulty: tpl.difficulty,
-            xp: tpl.xp,
+            difficulty: item.difficulty,
+            xp: item.xp,
             repeat: 'diariamente',
             spentSeconds: 0,
             createdBy: auth.user?.id ?? 'system',
@@ -119,6 +135,21 @@ export const useTaskStore = create<TaskState>()(
           seeded[task.id] = task;
         });
         set({ tasks: seeded, seededDates: [...state.seededDates, dateKey] });
+      },
+
+      reseedDay: (dateKey) => {
+        // Remove só as tarefas automáticas ainda pendentes do dia;
+        // concluídas, em andamento e criadas manualmente ficam.
+        set((s) => {
+          const tasks = { ...s.tasks };
+          Object.values(tasks).forEach((t) => {
+            if (t.date === dateKey && t.status === 'pending' && t.repeat === 'diariamente') {
+              delete tasks[t.id];
+            }
+          });
+          return { tasks, seededDates: s.seededDates.filter((d) => d !== dateKey) };
+        });
+        get().ensureSeeded(dateKey);
       },
 
       addTask: (input) => {
