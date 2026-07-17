@@ -9,8 +9,13 @@
     "newArchEnabled": false,
     "backgroundColor": "#101010",
     "primaryColor": "#6C63FF",
+    "icon": "./assets/icon.png",
     "android": {
       "package": "com.focoadois.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6C63FF"
+      },
       "softwareKeyboardLayoutMode": "pan",
       "permissions": ["POST_NOTIFICATIONS", "READ_CALENDAR", "WRITE_CALENDAR"]
     },
@@ -24,6 +29,8 @@
       [
         "expo-splash-screen",
         {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
           "backgroundColor": "#101010",
           "resizeMode": "contain"
         }
