@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { AppText } from '@/components/ui/AppText';
-import { subscribeToCouple } from '@/services/sync';
+import { subscribeToCouple, subscribeToUser } from '@/services/sync';
 import { useAuthStore } from '@/stores/authStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useTheme } from '@/theme';
@@ -96,9 +96,14 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
 
 export default function TabsLayout() {
   const coupleId = useAuthStore((s) => s.couple?.id);
+  const partnerId = useAuthStore((s) => s.partner?.id);
 
-  // Sincronização em tempo real do casal (ativa quando o Firebase
-  // estiver configurado via EXPO_PUBLIC_FIREBASE_*).
+  // Ao abrir o app, busca a versão mais recente de perfil/casal/parceiro.
+  useEffect(() => {
+    void useAuthStore.getState().refreshFromFirebase();
+  }, []);
+
+  // Sincronização em tempo real das tarefas do casal.
   useEffect(() => {
     if (!coupleId) return;
     let unsubscribe: (() => void) | undefined;
@@ -109,6 +114,18 @@ export default function TabsLayout() {
     });
     return () => unsubscribe?.();
   }, [coupleId]);
+
+  // Sincronização em tempo real do perfil do parceiro (XP, moedas, sequência).
+  useEffect(() => {
+    if (!partnerId) return;
+    let unsubscribe: (() => void) | undefined;
+    void subscribeToUser(partnerId, (partner) => {
+      useAuthStore.setState({ partner });
+    }).then((fn) => {
+      unsubscribe = fn;
+    });
+    return () => unsubscribe?.();
+  }, [partnerId]);
 
   return (
     <Tabs

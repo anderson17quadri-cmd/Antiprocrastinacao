@@ -47,8 +47,8 @@ export default function SettingsScreen() {
       {
         text: 'Sair',
         style: 'destructive',
-        onPress: () => {
-          signOut();
+        onPress: async () => {
+          await signOut();
           router.replace('/(auth)/login');
         },
       },
@@ -64,8 +64,8 @@ export default function SettingsScreen() {
         {
           text: 'Excluir conta',
           style: 'destructive',
-          onPress: () => {
-            deleteAccount();
+          onPress: async () => {
+            await deleteAccount();
             router.replace('/(auth)/login');
           },
         },

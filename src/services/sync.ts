@@ -6,11 +6,11 @@
  *  - Cada mutação é espelhada no Firestore quando há configuração/conexão;
  *  - Mutações offline entram numa fila persistida e são reenviadas
  *    automaticamente quando a conexão volta;
- *  - `subscribeToCouple` escuta snapshots do casal e aplica as mudanças
- *    do parceiro no estado local em tempo real.
+ *  - `subscribeToCouple` escuta as tarefas do casal e `subscribeToUser`
+ *    escuta o perfil do parceiro (XP, moedas, sequência) em tempo real.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ActivityEvent, Task } from '@/domain/entities';
+import { ActivityEvent, Couple, Task, UserProfile } from '@/domain/entities';
 import { firestore, isFirebaseConfigured } from './firebase';
 
 const QUEUE_KEY = 'foco-a-dois/sync-queue';
@@ -21,7 +21,7 @@ interface QueuedOp {
 }
 
 let coupleId: string | null = null;
-let unsubscribe: (() => void) | null = null;
+let unsubscribeTasks: (() => void) | null = null;
 
 export function setSyncCouple(id: string | null): void {
   coupleId = id;
@@ -86,10 +86,83 @@ export async function subscribeToCouple(
   const db = firestore();
   if (!db) return () => {};
   const { collection, onSnapshot } = await import('firebase/firestore');
-  unsubscribe?.();
-  unsubscribe = onSnapshot(collection(db, 'couples', id, 'tasks'), (snap) => {
+  unsubscribeTasks?.();
+  unsubscribeTasks = onSnapshot(collection(db, 'couples', id, 'tasks'), (snap) => {
     onTasks(snap.docs.map((d) => d.data() as Task));
   });
   void flushQueue();
-  return unsubscribe;
+  return unsubscribeTasks;
+}
+
+/* ------------------------------------------------------------------ */
+/* Perfis de usuário e casal (conta, pareamento)                       */
+/* ------------------------------------------------------------------ */
+
+export async function fetchUserProfile(uid: string): Promise<UserProfile | null> {
+  const db = firestore();
+  if (!db) return null;
+  const { doc, getDoc } = await import('firebase/firestore');
+  const snap = await getDoc(doc(db, 'users', uid));
+  return snap.exists() ? (snap.data() as UserProfile) : null;
+}
+
+export async function saveUserProfile(profile: UserProfile & { coupleId?: string }): Promise<void> {
+  const db = firestore();
+  if (!db) return;
+  const { doc, setDoc } = await import('firebase/firestore');
+  await setDoc(doc(db, 'users', profile.id), profile, { merge: true });
+}
+
+export async function createCoupleDoc(couple: Couple): Promise<void> {
+  const db = firestore();
+  if (!db) return;
+  const { doc, setDoc } = await import('firebase/firestore');
+  await setDoc(doc(db, 'couples', couple.id), couple);
+}
+
+export async function fetchCoupleDoc(id: string): Promise<Couple | null> {
+  const db = firestore();
+  if (!db) return null;
+  const { doc, getDoc } = await import('firebase/firestore');
+  const snap = await getDoc(doc(db, 'couples', id));
+  return snap.exists() ? (snap.data() as Couple) : null;
+}
+
+/** Busca um casal pelo código de convite (para pareamento). */
+export async function findCoupleByInviteCode(code: string): Promise<Couple | null> {
+  const db = firestore();
+  if (!db) return null;
+  const { collection, query, where, getDocs, limit } = await import('firebase/firestore');
+  const q = query(collection(db, 'couples'), where('inviteCode', '==', code), limit(1));
+  const snap = await getDocs(q);
+  return snap.empty ? null : (snap.docs[0].data() as Couple);
+}
+
+export async function addMemberToCouple(coupleId: string, userId: string): Promise<Couple> {
+  const db = firestore();
+  if (!db) throw new Error('Firestore indisponível');
+  const { doc, getDoc, updateDoc, arrayUnion } = await import('firebase/firestore');
+  const ref = doc(db, 'couples', coupleId);
+  const current = await getDoc(ref);
+  if (!current.exists()) throw new Error('Casal não encontrado');
+  const data = current.data() as Couple;
+  if (data.memberIds.length >= 2 && !data.memberIds.includes(userId)) {
+    throw new Error('Este casal já está completo');
+  }
+  await updateDoc(ref, { memberIds: arrayUnion(userId) });
+  return { ...data, memberIds: [...new Set([...data.memberIds, userId])] };
+}
+
+/** Escuta o perfil de um usuário (usado para ver o parceiro em tempo real). */
+export async function subscribeToUser(
+  uid: string,
+  onUser: (user: UserProfile) => void,
+): Promise<() => void> {
+  if (!isFirebaseConfigured()) return () => {};
+  const db = firestore();
+  if (!db) return () => {};
+  const { doc, onSnapshot } = await import('firebase/firestore');
+  return onSnapshot(doc(db, 'users', uid), (snap) => {
+    if (snap.exists()) onUser(snap.data() as UserProfile);
+  });
 }

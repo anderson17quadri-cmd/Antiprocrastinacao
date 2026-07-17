@@ -2,11 +2,11 @@ rules_version = '2';
 
 // Regras do Firestore — Foco a Dois.
 //
-// Estrutura: couples/{coupleId}/tasks/{taskId}
-//            couples/{coupleId}/activity/{eventId}
-//
-// Cada casal só pode ler/escrever nos próprios documentos: o uid do
-// usuário autenticado precisa constar em couples/{coupleId}.memberIds.
+// Estrutura:
+//   users/{uid}                        — perfil de cada pessoa
+//   couples/{coupleId}                 — dados do casal (código, score, meta)
+//   couples/{coupleId}/tasks/{taskId}
+//   couples/{coupleId}/activity/{eventId}
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -19,11 +19,37 @@ service cloud.firestore {
         request.auth.uid in get(/databases/$(database)/documents/couples/$(coupleId)).data.memberIds;
     }
 
+    // Perfil do usuário: qualquer um lê o próprio; o parceiro lê o do
+    // par (mesmo coupleId no próprio doc). Só o dono escreve o seu.
+    match /users/{userId} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.coupleId ==
+          resource.data.coupleId
+      );
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
     match /couples/{coupleId} {
-      // Criação: qualquer usuário autenticado pode criar o casal, desde
-      // que se inclua como membro. Leitura/edição: só quem já é membro.
-      allow create: if isSignedIn() && request.auth.uid in request.resource.data.memberIds;
-      allow read, update: if isCoupleMember(coupleId);
+      // Criação: quem cria já se inclui como único membro.
+      allow create: if isSignedIn() &&
+        request.auth.uid in request.resource.data.memberIds &&
+        request.resource.data.memberIds.size() == 1;
+
+      allow read: if isCoupleMember(coupleId);
+
+      // Update: membros existentes podem atualizar (score, meta) OU um
+      // segundo usuário pode entrar via código, desde que o casal ainda
+      // tenha vaga e ele esteja apenas se adicionando.
+      allow update: if isCoupleMember(coupleId) || (
+        isSignedIn() &&
+        resource.data.memberIds.size() < 2 &&
+        request.auth.uid in request.resource.data.memberIds &&
+        request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+      );
+
       allow delete: if false;
 
       match /tasks/{taskId} {
@@ -35,7 +61,6 @@ service cloud.firestore {
       }
     }
 
-    // Qualquer outro caminho: negado por padrão.
     match /{document=**} {
       allow read, write: if false;
     }

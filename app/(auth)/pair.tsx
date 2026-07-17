@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Share, StyleSheet, View } from 'react-native';
+import { Alert, Share, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AppText } from '@/components/ui/AppText';
@@ -27,9 +27,14 @@ export default function PairScreen() {
   const join = async () => {
     if (code.trim().length < 4) return;
     setLoading(true);
-    await joinCouple(code.trim());
-    setLoading(false);
-    router.replace('/(tabs)');
+    try {
+      await joinCouple(code.trim());
+      router.replace('/(tabs)');
+    } catch (error) {
+      Alert.alert('Não foi possível entrar', error instanceof Error ? error.message : 'Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
