@@ -6,7 +6,7 @@
     "scheme": "focoadois",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "backgroundColor": "#101010",
     "primaryColor": "#6C63FF",
     "android": {

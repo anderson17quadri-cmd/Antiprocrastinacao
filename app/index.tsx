@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import Animated, {
@@ -23,6 +23,13 @@ export default function SplashScreen() {
 
   const scale = useSharedValue(0.6);
   const heartOpacity = useSharedValue(0);
+  const navigated = useRef(false);
+
+  const go = (signedIn: boolean) => {
+    if (navigated.current) return;
+    navigated.current = true;
+    router.replace(signedIn ? '/(tabs)' : '/(auth)/login');
+  };
 
   useEffect(() => {
     heartOpacity.value = withTiming(1, { duration: 600 });
@@ -35,11 +42,20 @@ export default function SplashScreen() {
 
   useEffect(() => {
     if (!hydrated || status === 'loading') return;
-    const timeout = setTimeout(() => {
-      router.replace(status === 'signedIn' ? '/(tabs)' : '/(auth)/login');
-    }, 1900);
+    const timeout = setTimeout(() => go(status === 'signedIn'), 1900);
     return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, status]);
+
+  // Rede de segurança: se a hidratação do estado falhar por qualquer
+  // motivo, ainda assim saímos da splash após alguns segundos.
+  useEffect(() => {
+    const fallback = setTimeout(() => {
+      go(Boolean(useAuthStore.getState().user));
+    }, 4000);
+    return () => clearTimeout(fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const logoStyle = useAnimatedStyle(() => ({
     opacity: heartOpacity.value,
