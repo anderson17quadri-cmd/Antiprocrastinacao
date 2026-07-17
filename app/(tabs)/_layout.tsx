@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Tabs, router } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -7,6 +7,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { AppText } from '@/components/ui/AppText';
+import { subscribeToCouple } from '@/services/sync';
+import { useAuthStore } from '@/stores/authStore';
+import { useTaskStore } from '@/stores/taskStore';
 import { useTheme } from '@/theme';
 
 export const TAB_BAR_HEIGHT = 76;
@@ -92,6 +95,21 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
 }
 
 export default function TabsLayout() {
+  const coupleId = useAuthStore((s) => s.couple?.id);
+
+  // Sincronização em tempo real do casal (ativa quando o Firebase
+  // estiver configurado via EXPO_PUBLIC_FIREBASE_*).
+  useEffect(() => {
+    if (!coupleId) return;
+    let unsubscribe: (() => void) | undefined;
+    void subscribeToCouple(coupleId, (remote) => {
+      useTaskStore.getState().applyRemoteTasks(remote);
+    }).then((fn) => {
+      unsubscribe = fn;
+    });
+    return () => unsubscribe?.();
+  }, [coupleId]);
+
   return (
     <Tabs
       screenOptions={{ headerShown: false }}

@@ -108,12 +108,14 @@ const styles = StyleSheet.create({
   },
   wordmark: {
     fontSize: 40,
+    lineHeight: 50,
     fontFamily: font.extrabold,
     letterSpacing: 10,
     color: '#FFFFFF',
   },
   script: {
     fontSize: 26,
+    lineHeight: 34,
     fontFamily: font.medium,
     fontStyle: 'italic',
     color: brand.accent,

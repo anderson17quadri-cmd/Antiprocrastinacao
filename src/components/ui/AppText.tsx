@@ -12,13 +12,15 @@ interface Props extends TextProps {
   style?: StyleProp<TextStyle>;
 }
 
+// lineHeight explícito em todos os tamanhos: sem ele, o Android corta
+// o topo dos glifos com fontes personalizadas (números do timer etc.).
 const variantStyles: Record<Variant, TextStyle> = {
-  title: { fontSize: 28, fontFamily: font.bold, letterSpacing: -0.5 },
-  heading: { fontSize: 20, fontFamily: font.bold, letterSpacing: -0.3 },
-  subheading: { fontSize: 16, fontFamily: font.semibold },
+  title: { fontSize: 28, lineHeight: 36, fontFamily: font.bold, letterSpacing: -0.5 },
+  heading: { fontSize: 20, lineHeight: 27, fontFamily: font.bold, letterSpacing: -0.3 },
+  subheading: { fontSize: 16, lineHeight: 22, fontFamily: font.semibold },
   body: { fontSize: 14, fontFamily: font.regular, lineHeight: 20 },
-  caption: { fontSize: 12, fontFamily: font.medium },
-  label: { fontSize: 11, fontFamily: font.semibold, textTransform: 'uppercase', letterSpacing: 0.6 },
+  caption: { fontSize: 12, lineHeight: 17, fontFamily: font.medium },
+  label: { fontSize: 11, lineHeight: 16, fontFamily: font.semibold, textTransform: 'uppercase', letterSpacing: 0.6 },
 };
 
 export function AppText({ variant = 'body', tone = 'primary', weight, style, ...rest }: Props) {

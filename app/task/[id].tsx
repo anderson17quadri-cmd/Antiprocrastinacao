@@ -276,6 +276,7 @@ const styles = StyleSheet.create({
   },
   clock: {
     fontSize: 36,
+    lineHeight: 46,
     fontFamily: font.extrabold,
     fontVariant: ['tabular-nums'],
   },

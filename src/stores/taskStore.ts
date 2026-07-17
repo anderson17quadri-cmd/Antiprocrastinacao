@@ -50,6 +50,8 @@ interface TaskState {
   addTask: (input: NewTaskInput) => Task;
   updateTask: (id: string, patch: Partial<Task>) => void;
   removeTask: (id: string) => void;
+  /** Aplica tarefas recebidas do Firestore (sincronização do casal). */
+  applyRemoteTasks: (remote: Task[]) => void;
   startTask: (id: string, user: UserProfile) => void;
   /** Conclui respeitando o tipo da tarefa; false se o usuário não pode concluir. */
   completeTask: (id: string, user: UserProfile, spentSeconds: number) => boolean;
@@ -250,6 +252,18 @@ export const useTaskStore = create<TaskState>()(
             tasks: { ...s.tasks, [id]: updated },
             activity: logActivity(s, 'cancelled', user, task.title),
           };
+        });
+      },
+
+      applyRemoteTasks: (remote) => {
+        // Merge vindo do Firestore: a versão mais recente (updatedAt) vence.
+        set((s) => {
+          const tasks = { ...s.tasks };
+          for (const task of remote) {
+            const local = tasks[task.id];
+            if (!local || task.updatedAt > local.updatedAt) tasks[task.id] = task;
+          }
+          return { tasks };
         });
       },
 
