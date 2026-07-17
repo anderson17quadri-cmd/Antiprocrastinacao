@@ -12,9 +12,46 @@ interface Props {
   animated?: boolean;
 }
 
+/** Propriedades de layout que precisam viver no contêiner externo
+ *  (o wrapper animado), senão larguras percentuais e flex colapsam. */
+const LAYOUT_KEYS = [
+  'width',
+  'minWidth',
+  'maxWidth',
+  'height',
+  'minHeight',
+  'maxHeight',
+  'flex',
+  'flexGrow',
+  'flexShrink',
+  'flexBasis',
+  'alignSelf',
+  'margin',
+  'marginTop',
+  'marginBottom',
+  'marginLeft',
+  'marginRight',
+  'marginHorizontal',
+  'marginVertical',
+] as const;
+
+function splitStyle(style?: StyleProp<ViewStyle>): { outer: ViewStyle; inner: ViewStyle } {
+  const flat = StyleSheet.flatten(style) ?? {};
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = { ...flat };
+  for (const key of LAYOUT_KEYS) {
+    if (key in inner) {
+      outer[key] = inner[key];
+      delete inner[key];
+    }
+  }
+  return { outer: outer as ViewStyle, inner: inner as ViewStyle };
+}
+
 /** Card com glassmorphism leve, cantos arredondados e sombra suave. */
 export function Card({ children, style, onPress, index = 0, animated = true }: Props) {
   const { colors, dark } = useTheme();
+  const { outer, inner } = splitStyle(style);
 
   const base: ViewStyle = {
     backgroundColor: colors.surface,
@@ -25,23 +62,26 @@ export function Card({ children, style, onPress, index = 0, animated = true }: P
     ...cardShadow(dark),
   };
 
-  const inner = onPress ? (
+  const content = onPress ? (
     <Pressable
       onPress={onPress}
       android_ripple={{ color: colors.primarySoft, foreground: true }}
-      style={({ pressed }) => [base, style, pressed && styles.pressed]}
+      style={({ pressed }) => [base, inner, pressed && styles.pressed]}
     >
       {children}
     </Pressable>
   ) : (
-    <View style={[base, style]}>{children}</View>
+    <View style={[base, inner]}>{children}</View>
   );
 
-  if (!animated) return inner;
+  if (!animated) return <View style={outer}>{content}</View>;
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 60).springify().damping(18)}>
-      {inner}
+    <Animated.View
+      entering={FadeInDown.delay(index * 60).springify().damping(18)}
+      style={outer}
+    >
+      {content}
     </Animated.View>
   );
 }

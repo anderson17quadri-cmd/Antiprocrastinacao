@@ -36,6 +36,7 @@ export function AppText({ variant = 'body', tone = 'primary', weight, style, ...
 
   return (
     <Text
+      maxFontSizeMultiplier={1.2}
       {...rest}
       style={[
         variantStyles[variant],
