@@ -21,6 +21,13 @@
     "plugins": [
       "expo-router",
       "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#101010",
+          "resizeMode": "contain"
+        }
+      ],
       "expo-notifications",
       [
         "expo-calendar",
