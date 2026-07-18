@@ -11,7 +11,8 @@
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "casal-3ff6f",
         "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "casal-3ff6f.firebasestorage.app",
         "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "924868915910",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:924868915910:web:e61f55bd758f1c24765dc7"
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:924868915910:web:e61f55bd758f1c24765dc7",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "924868915910-5q1qk9d4oocsmt079c64grq4qbn9g0ia.apps.googleusercontent.com"
       }
     },
     "development": {
