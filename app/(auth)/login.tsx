@@ -9,6 +9,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { useAuthStore } from '@/stores/authStore';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { brand, font, radius, spacing, useTheme } from '@/theme';
 
 interface FormValues {
@@ -20,7 +21,21 @@ export default function LoginScreen() {
   const { colors } = useTheme();
   const signIn = useAuthStore((s) => s.signIn);
   const signInWithProvider = useAuthStore((s) => s.signInWithProvider);
+  const signInWithGoogleIdToken = useAuthStore((s) => s.signInWithGoogleIdToken);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const google = useGoogleAuth(async (idToken) => {
+    try {
+      setGoogleLoading(true);
+      await signInWithGoogleIdToken(idToken);
+      router.replace('/(tabs)');
+    } catch (error) {
+      Alert.alert('Não foi possível entrar com o Google', error instanceof Error ? error.message : 'Tente novamente.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  });
 
   const { control, handleSubmit } = useForm<FormValues>({
     defaultValues: { email: '', password: '' },
@@ -102,9 +117,14 @@ export default function LoginScreen() {
 
         <View style={styles.providers}>
           <Pressable
-            onPress={() => onProvider('google')}
+            onPress={() => (google.available ? google.promptAsync() : onProvider('google'))}
+            disabled={googleLoading}
             android_ripple={{ color: colors.primarySoft }}
-            style={[styles.provider, { backgroundColor: colors.glass, borderColor: colors.border }]}
+            style={[
+              styles.provider,
+              { backgroundColor: colors.glass, borderColor: colors.border },
+              googleLoading && { opacity: 0.6 },
+            ]}
           >
             <Ionicons name="logo-google" size={18} color={colors.text} />
             <AppText variant="subheading" weight="semibold">

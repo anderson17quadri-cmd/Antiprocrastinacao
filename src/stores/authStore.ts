@@ -28,6 +28,8 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signInWithProvider: (provider: 'google' | 'apple') => Promise<void>;
+  /** Troca um id_token do Google (via expo-auth-session) por uma sessão real do Firebase. */
+  signInWithGoogleIdToken: (idToken: string) => Promise<void>;
   joinCouple: (code: string) => Promise<void>;
   addRewards: (xp: number, coins: number) => void;
   spendCoins: (amount: number) => boolean;
@@ -156,6 +158,22 @@ export const useAuthStore = create<AuthState>()(
         const user = demoUser('Anderson', `anderson@${provider}.demo`);
         const partner = demoPartner();
         set({ user, partner, couple: demoCouple([user.id, partner.id]), status: 'signedIn' });
+      },
+
+      signInWithGoogleIdToken: async (idToken) => {
+        if (!isFirebaseConfigured()) {
+          const user = demoUser('Anderson', 'anderson@google.demo');
+          const partner = demoPartner();
+          set({ user, partner, couple: demoCouple([user.id, partner.id]), status: 'signedIn' });
+          return;
+        }
+        const { GoogleAuthProvider, signInWithCredential } = await import('firebase/auth');
+        const credential = GoogleAuthProvider.credential(idToken);
+        const cred = await signInWithCredential(firebaseAuth()!, credential);
+        const fallbackName = cred.user.displayName ?? cred.user.email?.split('@')[0] ?? 'Usuário';
+        const session = await loadFirebaseSession(cred.user.uid, fallbackName, cred.user.email ?? '');
+        setSyncCouple(session.couple?.id ?? null);
+        set({ ...session, status: 'signedIn' });
       },
 
       joinCouple: async (code) => {
