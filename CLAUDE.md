@@ -101,17 +101,25 @@ Rodar comandos de verificação isoladamente quando o resultado for crítico.
   publicada e verificada via curl, mas bloqueava o PAREAMENTO (query por
   inviteCode exige `allow list` para autenticados — `allow read` só de membro
   falha com "missing or insufficient permissions"). A v2 (get/list separados)
-  está no repo — **o usuário precisa republicar no console a cada mudança do
-  arquivo**; conferir com ele antes de dar o problema por resolvido. O cliente
+  está no repo e **JÁ FOI PUBLICADA por mim via Firebase Rules API** (18/jul,
+  com a chave de conta de serviço; pareamento testado E2E via REST: query por
+  código, arrayUnion de entrada, leitura como membro e do parceiro — tudo 200).
+  Enquanto a chave de serviço estiver válida, publicar regras direto pela API
+  (rulesets + release cloud.firestore) em vez de pedir para o usuário. O cliente
   também não pode fazer `get` do casal antes de entrar (addMemberToCouple
   recebe o doc vindo da query, não refaz a leitura).
-- Login Google real implementado (`src/hooks/useGoogleAuth.ts` +
-  `authStore.signInWithGoogleIdToken`), mas **falta o usuário obter e me passar**
-  `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`: Firebase Console > Authentication > Sign-in
-  method > Google > Ativar (gera automaticamente um Client ID tipo Web — é esse,
-  não precisa de client ID Android nem SHA-1 cadastrado, porque o fluxo usa
-  expo-auth-session com esse client id em todas as plataformas). Sem essa variável
-  configurada, o botão Google cai no fallback demo (não quebra, só não é real).
+- Login Google real CONFIGURADO por completo (18/jul): provedor ativado pelo
+  usuário no console; via API (chave de conta de serviço fornecida pelo usuário
+  no chat, guardada só na sessão) registrei o app Android `com.focoadois.app`
+  no Firebase, cadastrei SHA-1/SHA-256 do keystore EAS e obtive os dois client
+  IDs — `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` e `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`
+  estão no `eas.json` (profile base). O hook `useGoogleAuth` só habilita o botão
+  no Android nativo quando o client Android existe (client Web + scheme nativo
+  devolve erro 400 do Google). NOTA: se o keystore da EAS mudar (ex.: conta EAS
+  nova), o SHA-1 novo precisa ser cadastrado de novo no Firebase.
+- A correção anterior (nota histórica): não é verdade que "não precisa de client
+  ID Android" — em APK standalone o fluxo expo-auth-session EXIGE o client
+  Android; a nota antiga estava errada.
 - Login Apple: ainda 100% fake/demo — não implementado.
 
 ## Armadilhas já vividas (não repetir)
