@@ -184,6 +184,18 @@ Rodar comandos de verificação isoladamente quando o resultado for crítico.
   horário digitado (usuário trabalha à noite) com normalização HH:MM; lembretes
   locais de tarefas via `src/services/reminders.ts` (reagenda tudo com debounce no
   layout das tabs; cada aparelho notifica as tarefas do próprio usuário).
+- Rodada (18/jul, à noite): tarefas básicas fixas todo dia (acordar, escovar os dentes
+  manhã/noite, 2 L de água em 4 sessões, pequeno-almoço, jantar; louça/roupa alternando
+  de 2 em 2 dias) via `src/domain/schedule.ts`; ids de seed determinísticos (tasks e
+  rewards) para os dois aparelhos gerarem os MESMOS itens sem duplicar na sincronização;
+  login Google agora com `GoogleSignin.signOut()` antes do `signIn()` para sempre abrir
+  o seletor de contas (a Juliana caía direto na conta do Anderson); `Task.completedById`
+  registra quem deu a conclusão final — placar em Relatórios conta quem CONCLUIU, não o
+  responsável original ("é tipo um jogo, quem ganhar mais pontos ganha"); loja de
+  recompensas sincronizada de verdade (`couples/{id}/rewards` e `/redemptions` no
+  Firestore, regras publicadas e testadas E2E); notificação local quando o par cria
+  tarefa atribuída a você ou resgata uma recompensa (sem servidor push — só funciona
+  com o app aberto/em 2º plano no aparelho de quem recebe).
 - Próximos passos combinados: usuário vai gerar o APK oficial via `eas build` (não mais
   builds reduzidos entregues pelo chat) e testar no aparelho; ajustar conforme feedback
   de capturas de tela. O usuário NÃO pretende publicar na Play Store — "nível Play
