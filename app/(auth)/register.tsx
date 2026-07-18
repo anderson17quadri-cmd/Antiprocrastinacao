@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -22,8 +22,10 @@ export default function RegisterScreen() {
   const signUp = useAuthStore((s) => s.signUp);
   const [loading, setLoading] = useState(false);
 
+  const params = useLocalSearchParams<{ email?: string }>();
+
   const { control, handleSubmit } = useForm<FormValues>({
-    defaultValues: { name: '', email: '', password: '' },
+    defaultValues: { name: '', email: params.email ?? '', password: '' },
   });
 
   const onSubmit = handleSubmit(async ({ name, email, password }) => {
@@ -32,8 +34,19 @@ export default function RegisterScreen() {
       await signUp(name.trim(), email.trim(), password);
       // Primeiro a rotina pessoal (agenda), depois o pareamento do casal.
       router.replace({ pathname: '/routine', params: { next: 'pair' } });
-    } catch {
-      Alert.alert('Não foi possível criar a conta', 'Tente novamente em instantes.');
+    } catch (error) {
+      const code = (error as { code?: string })?.code ?? '';
+      if (code === 'auth/email-already-in-use') {
+        Alert.alert(
+          'Este e-mail já tem conta',
+          'É só entrar com a sua senha na tela anterior.',
+          [{ text: 'Ir para o login', onPress: () => router.back() }],
+        );
+      } else if (code === 'auth/weak-password') {
+        Alert.alert('Senha fraca', 'Use uma senha com pelo menos 6 caracteres.');
+      } else {
+        Alert.alert('Não foi possível criar a conta', 'Confira sua conexão e tente novamente.');
+      }
     } finally {
       setLoading(false);
     }

@@ -47,7 +47,20 @@ export default function LoginScreen() {
       await signIn(email.trim(), password);
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert('Não foi possível entrar', 'Verifique o e-mail e a senha e tente novamente.');
+      // O Firebase não distingue "conta não existe" de "senha errada"
+      // (proteção contra enumeração) — oferece os dois caminhos.
+      Alert.alert(
+        'Não foi possível entrar',
+        'Confira a senha — ou, se vocês ainda não têm conta, crie uma agora (leva 10 segundos).',
+        [
+          { text: 'Tentar de novo', style: 'cancel' },
+          {
+            text: 'Criar conta',
+            onPress: () =>
+              router.push({ pathname: '/(auth)/register', params: { email: email.trim() } }),
+          },
+        ],
+      );
     } finally {
       setLoading(false);
     }
