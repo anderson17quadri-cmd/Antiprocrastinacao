@@ -113,13 +113,17 @@ Rodar comandos de verificação isoladamente quando o resultado for crítico.
   no chat, guardada só na sessão) registrei o app Android `com.focoadois.app`
   no Firebase, cadastrei SHA-1/SHA-256 do keystore EAS e obtive os dois client
   IDs — `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` e `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`
-  estão no `eas.json` (profile base). O hook `useGoogleAuth` só habilita o botão
-  no Android nativo quando o client Android existe (client Web + scheme nativo
-  devolve erro 400 do Google). NOTA: se o keystore da EAS mudar (ex.: conta EAS
-  nova), o SHA-1 novo precisa ser cadastrado de novo no Firebase.
-- A correção anterior (nota histórica): não é verdade que "não precisa de client
-  ID Android" — em APK standalone o fluxo expo-auth-session EXIGE o client
-  Android; a nota antiga estava errada.
+  estão no `eas.json` (profile base). NOTA: se o keystore da EAS mudar (ex.:
+  conta EAS nova), o SHA-1 novo precisa ser cadastrado de novo no Firebase.
+- Histórico de tentativas do Google (NÃO repetir): (1) client Web + scheme
+  nativo → 400; (2) client Android via expo-auth-session (navegador) → 400
+  invalid_request, porque o Google BLOQUEIA redirect de scheme customizado em
+  clients Android novos. Solução final: **Google Sign-In NATIVO**
+  (`@react-native-google-signin/google-signin`, plugin no app.json) no
+  Android/iOS — sem navegador; `configure({ webClientId })` e o client Android
+  é usado implicitamente via pacote+SHA-1. Fluxo web (expo-auth-session) só
+  para Platform.OS === 'web'. Compilação local com o módulo verificada
+  (RNGoogleSignin presente no dex).
 - Login Apple: ainda 100% fake/demo — não implementado.
 
 ## Armadilhas já vividas (não repetir)
