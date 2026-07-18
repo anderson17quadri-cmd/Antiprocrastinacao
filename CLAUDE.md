@@ -14,14 +14,28 @@ para casais. Idioma do produto e da comunicação com o usuário (Anderson): **p
 3. **Enviar as capturas ao usuário e esperar o feedback/aprovação.**
 4. Só depois de aprovado, gerar e enviar o APK.
 
-Nunca entregar APK sem ter validado o visual com capturas. O usuário avalia o design
-olhando imagens, não instalando às cegas.
+**Atenção**: capturas via Playwright/Chromium testam a versão **web** — não pegam bugs
+específicos do Android nativo (ex.: `includeFontPadding` cortando ícones/texto, fontes
+que não carregam nativamente). Para essas classes de bug, a única verificação real é
+compilar o APK de verdade e inspecionar o pacote compilado (ver seção de build), e a
+confirmação visual final é sempre do usuário no aparelho — não simular certeza que não se tem.
+
+**O usuário quer o APK oficial gerado por ELE via `eas build`, não builds reduzidos
+enviados por aqui no chat.** O limite de envio do chat é 30 MiB; NÃO vale a pena
+sacrificar arquiteturas/qualidade só para caber nesse limite. Builds locais neste
+ambiente servem para **verificação** (conferir que compila, extrair o bundle e
+confirmar que os fixes entraram) — não para entrega como produto final. Sempre que
+possível, garantir que o app.json/eas.json commitados produzam o build certo quando
+o usuário rodar `eas build` do lado dele.
 
 ## Verificação obrigatória antes de qualquer entrega
 
 - `npx tsc --noEmit` limpo;
 - `npx expo export --platform android` conclui;
-- Smoke test no Chromium (o export web + Playwright acima) sem `pageerror`.
+- Smoke test no Chromium (o export web + Playwright acima) sem `pageerror`;
+- Para bugs suspeitos de serem Android-nativo-only: compilar o APK real aqui
+  (ver seção de build) e inspecionar o `.apk` gerado (ver subseção "Verificar dentro
+  do APK compilado").
 
 ## Build do APK neste ambiente (já montado)
 
@@ -34,14 +48,68 @@ echo "sdk.dir=/opt/android-sdk" > android/local.properties
 cd android && gradle :app:assembleRelease --no-daemon
 ```
 
-- Proxy para o Gradle: já configurado em `/root/.gradle/gradle.properties` (systemProp).
+- Proxy para o Gradle: configurado em `/root/.gradle/gradle.properties` (systemProp).
+  **A porta do proxy muda entre sessões** — antes de builds que baixam dependências novas
+  (ex.: depois de `npx expo install <pacote novo>`), conferir `echo $HTTPS_PROXY` e
+  sincronizar com `sed -i "s/proxyPort=[0-9]*/proxyPort=<porta atual>/g" /root/.gradle/gradle.properties`.
+  Erro característico quando desatualizado: `Connect to 127.0.0.1:<porta velha> failed:
+  Connection refused` ao resolver alguma dependência Maven.
 - Gradle 8.10.2 veio do espelho Tencent (downloads de github.com são bloqueados pelo proxy).
-- Para enviar APK ao usuário (limite 30 MiB): `ndk { abiFilters "arm64-v8a" }` no
-  `android/app/build.gradle` + remover do zip as fontes de ícones não usadas (manter
-  Ionicons e Inter) + `zipalign` + `apksigner` com `android/app/debug.keystore`
+- **Cache do Gradle não invalida quando só o `.env` muda** (o bundle JS reaproveitado fica
+  sem as chaves): depois de criar/editar `.env`, rodar com `--rerun-tasks` (ou apagar
+  `android/app/build/intermediates/merged_assets` e `.../generated/assets`) para forçar
+  o re-bundle antes de assinar um APK que precisa das variáveis `EXPO_PUBLIC_*`.
+- **R8/ProGuard + shrinkResources são SEGUROS agora** (testado e confirmado: fontes
+  sobrevivem, extraídas do `.apk` e presentes em `assets/fonts/`). Habilitados via
+  `expo-build-properties` no `app.json` (`enableProguardInReleaseBuilds` +
+  `enableShrinkResourcesInReleaseBuilds`). A nota antiga "nunca ativar" era de um
+  cenário anterior a embutir as fontes nativamente via plugin `expo-font` — não se
+  aplica mais. Redução de ~20% no tamanho final.
+- **Arquiteturas nativas restritas** via `plugins/withReactNativeArchitectures.js`
+  (config plugin customizado, commitado): fixa `reactNativeArchitectures` no
+  `gradle.properties` E injeta `ndk.abiFilters` no `build.gradle` do app — as duas
+  frentes são necessárias (a primeira só cobre libs do React Native/Hermes, a segunda
+  cobre todas as outras deps nativas, ex. Firebase). Atualmente restrito a
+  `armeabi-v7a` + `arm64-v8a` (cobre todo Android real; só exclui x86/x86_64,
+  que servem apenas para emulador). Isso já reduz o build do EAS de ~90 MB para a
+  faixa de 35-40 MB sem cortar nenhum recurso do app.
+- Assinatura local para testes: `zipalign` + `apksigner` com `android/app/debug.keystore`
   (senha `android`, alias `androiddebugkey`).
-- **NUNCA ativar `enableProguardInReleaseBuilds` / `shrinkResources`**: o shrinker
-  remove as fontes (ícones/Inter) do APK e quebra a UI inteira.
+
+### Verificar dentro do APK compilado
+
+```bash
+mkdir -p /tmp/apk-check && cd /tmp/apk-check
+unzip -o -q <caminho-do-apk> assets/index.android.bundle
+strings assets/index.android.bundle | grep -c "includeFontPadding"   # deve ser >=1
+grep -a -c "<algum-trecho-da-EXPO_PUBLIC_...>" assets/index.android.bundle  # confirma env var embutida
+find . -iname "*ionicons*" -o -iname "*inter_*"    # confirma fontes nativas embutidas (via unzip -o -q <apk> -d .)
+```
+
+Cuidado ao ler saídas de múltiplos `grep`/`strings` concatenadas no mesmo bloco de
+ferramenta — já aconteceu de interpretar mal qual trecho pertencia a qual comando.
+Rodar comandos de verificação isoladamente quando o resultado for crítico.
+
+## Variáveis de ambiente / segredos (Firebase, Google)
+
+- Projeto Firebase real do usuário: `casal-3ff6f` (as chaves EXPO_PUBLIC_FIREBASE_*
+  já estão no `eas.json`, dentro do profile `base` herdado por development/preview/
+  production — são chaves públicas, seguras para ficar no repo; a segurança de
+  verdade vem das Regras do Firestore, não do sigilo da chave).
+- Firestore em **modo produção**: regras completas em `firestore.rules` (cobre
+  `users/{uid}` e `couples/{id}` + subcoleções `tasks`/`activity`). **O usuário
+  precisa colar esse conteúdo em Firestore Database > Regras > Publicar** — eu não
+  tenho acesso ao console dele para fazer isso diretamente. Testável via curl
+  (accounts:signUp na Identity Toolkit API + PATCH no Firestore REST) sem precisar
+  rodar o app.
+- Login Google real implementado (`src/hooks/useGoogleAuth.ts` +
+  `authStore.signInWithGoogleIdToken`), mas **falta o usuário obter e me passar**
+  `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`: Firebase Console > Authentication > Sign-in
+  method > Google > Ativar (gera automaticamente um Client ID tipo Web — é esse,
+  não precisa de client ID Android nem SHA-1 cadastrado, porque o fluxo usa
+  expo-auth-session com esse client id em todas as plataformas). Sem essa variável
+  configurada, o botão Google cai no fallback demo (não quebra, só não é real).
+- Login Apple: ainda 100% fake/demo — não implementado.
 
 ## Armadilhas já vividas (não repetir)
 
@@ -49,10 +117,25 @@ cd android && gradle :app:assembleRelease --no-daemon
   `resource drawable/splashscreen_logo not found` — o projeto precisa dos assets
   `assets/icon.png`, `assets/adaptive-icon.png`, `assets/splash-icon.png` referenciados
   no `app.json`. Já corrigido; não remover.
+- **Ícones "sumindo" no Android real (não aparecem, não é só corte)**: causa raiz foi
+  remover o plugin `expo-font` que embute Ionicons/Inter nativamente, achando (sem
+  evidência sólida) que era redundante com `useFonts()` em runtime. Para builds fora
+  do Expo Go (prebuild/EAS), a Expo recomenda EXPLICITAMENTE listar as fontes
+  (inclusive as de ícones) no plugin `expo-font` do `app.json` — não confiar só no
+  carregamento em runtime de `@expo/vector-icons`. Não remover essa config de novo.
+- Corte de topo de texto/ícones em fontes customizadas no Android (não confundir com
+  o bug acima — são sintomas diferentes): `includeFontPadding: false` global via
+  `src/utils/androidTextFix.ts` (patch em `Text.defaultProps`, importado no topo do
+  `app/_layout.tsx`). Só reproduz em Android nativo, nunca no teste web/Playwright.
 - O usuário roda tudo no **Termux** do celular: `npm install` altera `package-lock.json`
   e faz `git pull` falhar silenciosamente → orientar `git fetch && git reset --hard origin/<branch>`
   e conferir `git log --oneline -1`.
 - No EAS via Termux: `export EAS_SKIP_AUTO_FINGERPRINT=1` (o fingerprint quebra no Termux).
+- **`eas build` (nuvem) nunca recebe o `.env` local** (fica de fora por estar no
+  `.gitignore` — correto do ponto de vista de segurança, mas quebra a sincronização
+  silenciosamente). As variáveis `EXPO_PUBLIC_FIREBASE_*` foram movidas para dentro do
+  `eas.json` (profile `base`), que É versionado — é a forma correta e documentada da
+  EAS de injetar env vars em builds na nuvem.
 - Ícones: importar por conjunto (`@expo/vector-icons/Ionicons`), nunca o pacote inteiro.
 - Componente `Card` (src/components/ui/Card.tsx): estilos de layout (width %, flex,
   margens) são movidos para o wrapper animado externo — manter esse comportamento,
@@ -62,8 +145,10 @@ cd android && gradle :app:assembleRelease --no-daemon
 ## Estado atual
 
 - Branch de trabalho: `claude/foco-dois-app-design-eewn1j`.
-- App roda em modo local/demo (Firebase não configurado; login aceita qualquer credencial,
-  parceira "Juliana" é simulada). Sincronização real requer `EXPO_PUBLIC_FIREBASE_*` (.env).
-- Próximos passos combinados: iterações de design com capturas; depois Firebase real
-  (sincronização do casal em tempo real); o usuário NÃO pretende publicar na Play Store —
-  "nível Play Store" era sentido figurado, o padrão de qualidade é que deve ser alto.
+- Firebase real conectado (Auth + Firestore) — ver seção de variáveis acima. Falta o
+  usuário publicar as regras do Firestore e, se quiser Google Login funcional, gerar o
+  Web Client ID. Sem essas duas coisas, o app cai graciosamente no modo demo local.
+- Próximos passos combinados: usuário vai gerar o APK oficial via `eas build` (não mais
+  builds reduzidos entregues pelo chat) e testar no aparelho; ajustar conforme feedback
+  de capturas de tela. O usuário NÃO pretende publicar na Play Store — "nível Play
+  Store" era sentido figurado, o padrão de qualidade é que deve ser alto.
