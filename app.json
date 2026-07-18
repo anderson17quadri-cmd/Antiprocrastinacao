@@ -27,15 +27,6 @@
       "expo-router",
       "./plugins/withReactNativeArchitectures",
       [
-        "expo-build-properties",
-        {
-          "android": {
-            "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
-          }
-        }
-      ],
-      [
         "expo-font",
         {
           "fonts": [
@@ -44,7 +35,7 @@
             "node_modules/@expo-google-fonts/inter/Inter_600SemiBold.ttf",
             "node_modules/@expo-google-fonts/inter/Inter_700Bold.ttf",
             "node_modules/@expo-google-fonts/inter/Inter_800ExtraBold.ttf",
-            "node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf"
+            "./assets/fonts/ionicons.ttf"
           ]
         }
       ],
