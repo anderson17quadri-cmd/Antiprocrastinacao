@@ -26,19 +26,6 @@
     "plugins": [
       "expo-router",
       [
-        "expo-font",
-        {
-          "fonts": [
-            "node_modules/@expo-google-fonts/inter/Inter_400Regular.ttf",
-            "node_modules/@expo-google-fonts/inter/Inter_500Medium.ttf",
-            "node_modules/@expo-google-fonts/inter/Inter_600SemiBold.ttf",
-            "node_modules/@expo-google-fonts/inter/Inter_700Bold.ttf",
-            "node_modules/@expo-google-fonts/inter/Inter_800ExtraBold.ttf",
-            "node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf"
-          ]
-        }
-      ],
-      [
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
