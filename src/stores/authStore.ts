@@ -78,10 +78,12 @@ async function createFirebaseAccount(name: string, email: string, password: stri
 
   const user: UserProfile = { id: cred.user.uid, name, email, xp: 0, coins: 0, streakDays: 0, bestStreak: 0 };
   const couple = defaultCouple([user.id]);
-  await Promise.all([
-    saveUserProfile({ ...user, coupleId: couple.id }),
-    createCoupleDoc(couple),
-  ]);
+  try {
+    await Promise.all([saveUserProfile({ ...user, coupleId: couple.id }), createCoupleDoc(couple)]);
+  } catch {
+    // Firestore indisponível (rede/regras): a conta de Auth já existe;
+    // segue localmente e o refreshFromFirebase reconcilia depois.
+  }
   return { user, couple };
 }
 
@@ -91,28 +93,39 @@ async function loadFirebaseSession(
   fallbackName: string,
   email: string,
 ): Promise<{ user: UserProfile; couple: Couple | null; partner: UserProfile | null }> {
-  let profile = (await fetchUserProfile(uid)) as RemoteUser | null;
+  try {
+    const profile = (await fetchUserProfile(uid)) as RemoteUser | null;
 
-  if (!profile) {
-    // Conta existe no Auth mas sem documento no Firestore (ex.: criada
-    // antes da integração). Cria um perfil + casal padrão agora.
+    if (!profile) {
+      // Conta existe no Auth mas sem documento no Firestore (ex.: criada
+      // antes da integração). Cria um perfil + casal padrão agora.
+      const user: UserProfile = { id: uid, name: fallbackName, email, xp: 0, coins: 0, streakDays: 0, bestStreak: 0 };
+      const couple = defaultCouple([uid]);
+      try {
+        await Promise.all([saveUserProfile({ ...user, coupleId: couple.id }), createCoupleDoc(couple)]);
+      } catch {
+        // Sem acesso ao Firestore agora: segue local; reconcilia depois.
+      }
+      return { user, couple, partner: null };
+    }
+
+    const { coupleId, ...user } = profile;
+    let couple: Couple | null = null;
+    let partner: UserProfile | null = null;
+
+    if (coupleId) {
+      couple = await fetchCoupleDoc(coupleId);
+      const partnerId = couple?.memberIds.find((id) => id !== uid);
+      if (partnerId) partner = await fetchUserProfile(partnerId);
+    }
+
+    return { user, couple, partner };
+  } catch {
+    // Firestore inacessível: entra localmente com o essencial — o app
+    // nunca pode bloquear o login por causa de sincronização.
     const user: UserProfile = { id: uid, name: fallbackName, email, xp: 0, coins: 0, streakDays: 0, bestStreak: 0 };
-    const couple = defaultCouple([uid]);
-    await Promise.all([saveUserProfile({ ...user, coupleId: couple.id }), createCoupleDoc(couple)]);
-    return { user, couple, partner: null };
+    return { user, couple: defaultCouple([uid]), partner: null };
   }
-
-  const { coupleId, ...user } = profile;
-  let couple: Couple | null = null;
-  let partner: UserProfile | null = null;
-
-  if (coupleId) {
-    couple = await fetchCoupleDoc(coupleId);
-    const partnerId = couple?.memberIds.find((id) => id !== uid);
-    if (partnerId) partner = await fetchUserProfile(partnerId);
-  }
-
-  return { user, couple, partner };
 }
 
 export const useAuthStore = create<AuthState>()(

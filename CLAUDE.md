@@ -97,11 +97,10 @@ Rodar comandos de verificação isoladamente quando o resultado for crítico.
   production — são chaves públicas, seguras para ficar no repo; a segurança de
   verdade vem das Regras do Firestore, não do sigilo da chave).
 - Firestore em **modo produção**: regras completas em `firestore.rules` (cobre
-  `users/{uid}` e `couples/{id}` + subcoleções `tasks`/`activity`). **O usuário
-  precisa colar esse conteúdo em Firestore Database > Regras > Publicar** — eu não
-  tenho acesso ao console dele para fazer isso diretamente. Testável via curl
-  (accounts:signUp na Identity Toolkit API + PATCH no Firestore REST) sem precisar
-  rodar o app.
+  `users/{uid}` e `couples/{id}` + subcoleções `tasks`/`activity`). **Regras JÁ
+  PUBLICADAS pelo usuário e verificadas funcionando** (testado via curl:
+  accounts:signUp na Identity Toolkit API + PATCH autenticado no Firestore REST
+  aceito). O banco de dados está operacional.
 - Login Google real implementado (`src/hooks/useGoogleAuth.ts` +
   `authStore.signInWithGoogleIdToken`), mas **falta o usuário obter e me passar**
   `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`: Firebase Console > Authentication > Sign-in
@@ -145,9 +144,18 @@ Rodar comandos de verificação isoladamente quando o resultado for crítico.
 ## Estado atual
 
 - Branch de trabalho: `claude/foco-dois-app-design-eewn1j`.
-- Firebase real conectado (Auth + Firestore) — ver seção de variáveis acima. Falta o
-  usuário publicar as regras do Firestore e, se quiser Google Login funcional, gerar o
-  Web Client ID. Sem essas duas coisas, o app cai graciosamente no modo demo local.
+- Firebase real conectado (Auth + Firestore), regras publicadas e funcionando. Se
+  quiser Google Login funcional, falta o usuário gerar o Web Client ID (ver seção de
+  variáveis). Sem isso, o botão Google cai graciosamente no fallback demo.
+- Rodada atual (jul/2026): sons de conquista via `expo-av` (`src/services/sound.ts`,
+  `assets/sounds/success.wav` + `fanfare.wav` sintetizados; toggle "Sons de conquista"
+  nas configurações); seeding mínimo no primeiro acesso (só cronograma compartilhado
+  + rotina própria — o par gera os itens dele no aparelho dele, chegam via sync);
+  dashboard com anel-herói de progresso + chips; alternador de tema sol/lua no
+  cabeçalho da Home; fix de emojis cortados no `AppText` (lineHeight automático
+  quando o style sobrescreve fontSize sem lineHeight); "Para quem?" ao criar tarefa
+  individual (permite criar tarefa para o par); `authStore` com fallback local se o
+  Firestore falhar no login/cadastro.
 - Próximos passos combinados: usuário vai gerar o APK oficial via `eas build` (não mais
   builds reduzidos entregues pelo chat) e testar no aparelho; ajustar conforme feedback
   de capturas de tela. O usuário NÃO pretende publicar na Play Store — "nível Play

@@ -5,6 +5,7 @@ import { Redemption, Reward, RewardCategory, UserProfile } from '@/domain/entiti
 import { DEFAULT_REWARDS } from '@/constants/seed';
 import { newId } from '@/utils/id';
 import { notifyPartner } from '@/services/notifications';
+import { playSound } from '@/services/sound';
 import { useAuthStore } from './authStore';
 
 export interface NewRewardInput {
@@ -93,6 +94,7 @@ export const useRewardsStore = create<RewardsState>()(
           used: false,
         };
         set((s) => ({ redemptions: [redemption, ...s.redemptions].slice(0, 200) }));
+        playSound('fanfare');
         notifyPartner(`${user.name} resgatou a recompensa ${reward.emoji} ${reward.name}!`);
         return 'ok';
       },

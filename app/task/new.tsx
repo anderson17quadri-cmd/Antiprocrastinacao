@@ -110,8 +110,9 @@ export default function NewTaskScreen() {
       date: values.date || todayKey(),
       time: values.time || undefined,
       estimatedMinutes: Math.max(5, parseInt(values.estimatedMinutes, 10) || 30),
-      // Individual/compartilhada pertence aos dois; casa usa o responsável escolhido.
-      assigneeId: values.type === 'casa' && values.assigneeId ? values.assigneeId : undefined,
+      // Compartilhada pertence aos dois; casa e individual usam o
+      // responsável escolhido ('' = Ambos / Cada um).
+      assigneeId: values.type !== 'compartilhada' && values.assigneeId ? values.assigneeId : undefined,
       priority: values.priority,
       difficulty: values.difficulty,
       repeat: values.repeat,
@@ -233,11 +234,11 @@ export default function NewTaskScreen() {
         ))}
       </ScrollView>
 
-      {/* Responsável — apenas tarefas da casa */}
-      {type === 'casa' ? (
+      {/* Responsável — casa (quem faz) e individual (para quem é a tarefa) */}
+      {type !== 'compartilhada' ? (
         <>
           <AppText variant="caption" tone="secondary" style={styles.groupLabel}>
-            Responsável
+            {type === 'casa' ? 'Responsável' : 'Para quem?'}
           </AppText>
           <Controller
             control={control}
@@ -246,7 +247,7 @@ export default function NewTaskScreen() {
               <View style={styles.chipRow}>
                 <Pressable onPress={() => field.onChange('')} style={chip(field.value === '')}>
                   <AppText variant="caption" weight="semibold" style={chipText(field.value === '')}>
-                    👫 Ambos
+                    {type === 'casa' ? '👫 Ambos' : '👫 Cada um'}
                   </AppText>
                 </Pressable>
                 {[user, partner].filter(Boolean).map((member) => (
@@ -256,7 +257,7 @@ export default function NewTaskScreen() {
                     style={chip(field.value === member!.id)}
                   >
                     <AppText variant="caption" weight="semibold" style={chipText(field.value === member!.id)}>
-                      {member!.name}
+                      {member!.id === user?.id ? `Eu (${member!.name.split(' ')[0]})` : member!.name.split(' ')[0]}
                     </AppText>
                   </Pressable>
                 ))}
@@ -265,8 +266,10 @@ export default function NewTaskScreen() {
           />
           <AppText variant="caption" tone="muted" style={{ marginTop: 6, marginLeft: 4 }}>
             {watch('assigneeId') === ''
-              ? 'Qualquer um dos dois pode concluir.'
-              : 'Somente o responsável escolhido poderá concluir.'}
+              ? type === 'casa'
+                ? 'Qualquer um dos dois pode concluir.'
+                : 'Cada um conclui a sua própria parte.'
+              : 'Somente essa pessoa poderá concluir — o par acompanha.'}
           </AppText>
         </>
       ) : null}

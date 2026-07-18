@@ -10,11 +10,14 @@ interface SettingsState {
   language: Language;
   notificationsEnabled: boolean;
   remindersEnabled: boolean;
+  soundEnabled: boolean;
   autoSync: boolean;
   backupEnabled: boolean;
   setTheme: (theme: ThemePreference) => void;
   setLanguage: (language: Language) => void;
-  toggle: (key: 'notificationsEnabled' | 'remindersEnabled' | 'autoSync' | 'backupEnabled') => void;
+  toggle: (
+    key: 'notificationsEnabled' | 'remindersEnabled' | 'soundEnabled' | 'autoSync' | 'backupEnabled',
+  ) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -24,6 +27,7 @@ export const useSettingsStore = create<SettingsState>()(
       language: 'pt-BR',
       notificationsEnabled: true,
       remindersEnabled: true,
+      soundEnabled: true,
       autoSync: true,
       backupEnabled: true,
       setTheme: (theme) => set({ theme }),

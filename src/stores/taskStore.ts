@@ -17,6 +17,7 @@ import { ScheduleItem, buildPersonalSchedule, buildSharedSchedule } from '@/doma
 import { useRoutineStore } from './routineStore';
 import { newId } from '@/utils/id';
 import { notifyPartner } from '@/services/notifications';
+import { playSound } from '@/services/sound';
 import { pushTask, pushActivity } from '@/services/sync';
 import { useAuthStore } from './authStore';
 
@@ -95,14 +96,15 @@ export const useTaskStore = create<TaskState>()(
         const now = Date.now();
         const seeded: Record<string, Task> = { ...state.tasks };
 
-        // Agenda do dia: parte compartilhada do casal + rotina pessoal de cada um.
+        // Agenda enxuta: só a parte compartilhada pré-definida do casal e,
+        // se o usuário configurou a rotina dele, os itens pessoais DELE.
+        // O par gera os próprios itens no aparelho dele (chegam via sync) —
+        // assim o app abre limpo, sem lista lotada.
         const items: ScheduleItem[] = [];
         const wake = auth.user ? routines[auth.user.id]?.wakeTime : undefined;
         items.push(...buildSharedSchedule(wake));
-        if (members.length > 0) {
-          members.forEach((m) => items.push(...buildPersonalSchedule(m.id, routines[m.id], dateKey)));
-        } else {
-          items.push(...buildPersonalSchedule('me', undefined, dateKey));
+        if (auth.user && routines[auth.user.id]) {
+          items.push(...buildPersonalSchedule(auth.user.id, routines[auth.user.id], dateKey));
         }
         items.sort((a, b) => a.time.localeCompare(b.time));
 
@@ -218,6 +220,7 @@ export const useTaskStore = create<TaskState>()(
           activity: logActivity(s, 'completed', user, task.title),
         }));
         pushTask(updated);
+        playSound('success');
 
         const partnerStillPending =
           updated.type === 'individual' && updated.status !== 'done';
@@ -234,6 +237,7 @@ export const useTaskStore = create<TaskState>()(
         );
         if (dayTasks.length > 0 && dayTasks.every((t) => t.status === 'done')) {
           useAuthStore.getState().registerStreakDay(task.date);
+          playSound('fanfare');
           set((s) => ({
             activity: logActivity(s, 'milestone', user, undefined, 'Meta diária alcançada! Parabéns ao casal! 🎉'),
           }));

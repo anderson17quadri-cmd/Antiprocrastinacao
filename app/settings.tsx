@@ -159,6 +159,12 @@ export default function SettingsScreen() {
           onToggle={() => settings.toggle('remindersEnabled')}
         />
         <Row
+          icon="musical-notes-outline"
+          label="Sons de conquista"
+          toggle={settings.soundEnabled}
+          onToggle={() => settings.toggle('soundEnabled')}
+        />
+        <Row
           icon="sync-outline"
           label="Sincronização automática"
           toggle={settings.autoSync}

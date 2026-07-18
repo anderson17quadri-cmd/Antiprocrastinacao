@@ -6,7 +6,7 @@ import { AppText } from '@/components/ui/AppText';
 import { Avatar } from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/Card';
 import { Confetti } from '@/components/ui/Confetti';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import { ProgressRing } from '@/components/ui/ProgressRing';
 import { Screen } from '@/components/ui/Screen';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatCard } from '@/components/home/StatCard';
@@ -17,6 +17,7 @@ import { completionBlockReason, isDoneFor } from '@/domain/taskRules';
 import { completionRatio, tasksForDate } from '@/domain/stats';
 import { useAuthStore } from '@/stores/authStore';
 import { useRoutineStore } from '@/stores/routineStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useTimerStore } from '@/stores/timerStore';
 import { spacing, useTheme } from '@/theme';
@@ -24,7 +25,8 @@ import { fullDate, greeting, todayKey, dayjs } from '@/utils/date';
 import { formatPoints } from '@/utils/format';
 
 export default function HomeScreen() {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
+  const setTheme = useSettingsStore((s) => s.setTheme);
   const user = useAuthStore((s) => s.user);
   const partner = useAuthStore((s) => s.partner);
   const couple = useAuthStore((s) => s.couple);
@@ -96,6 +98,13 @@ export default function HomeScreen() {
               {fullDate(dayjs(selectedDate))}
             </AppText>
           </View>
+          <Pressable
+            onPress={() => setTheme(dark ? 'light' : 'dark')}
+            hitSlop={8}
+            style={styles.bell}
+          >
+            <Ionicons name={dark ? 'sunny-outline' : 'moon-outline'} size={21} color={colors.text} />
+          </Pressable>
           <Pressable onPress={() => router.push('/notifications')} hitSlop={8} style={styles.bell}>
             <Ionicons name="notifications-outline" size={22} color={colors.text} />
             <View style={[styles.bellDot, { backgroundColor: colors.primary }]} />
@@ -131,20 +140,40 @@ export default function HomeScreen() {
           </Card>
         ) : null}
 
-        {/* Progresso do dia */}
-        <Card index={0}>
-          <View style={styles.progressHeader}>
+        {/* Progresso do dia — anel-herói */}
+        <Card index={0} style={styles.heroCard}>
+          <ProgressRing progress={progress} size={116} strokeWidth={11}>
+            <View style={styles.heroRingInner}>
+              <AppText variant="title" weight="extrabold" style={{ fontSize: 30 }}>
+                {productivity}
+                <AppText variant="subheading" weight="bold" tone="accent">
+                  %
+                </AppText>
+              </AppText>
+            </View>
+          </ProgressRing>
+          <View style={styles.heroInfo}>
             <AppText variant="subheading" weight="semibold">
               Progresso do dia
             </AppText>
-            <AppText variant="heading" weight="extrabold" tone="accent">
-              {productivity}%
+            <AppText variant="caption" tone="secondary">
+              {doneCount} de {totalCount} tarefas concluídas
             </AppText>
+            <View style={styles.heroChips}>
+              <View style={[styles.heroChip, { backgroundColor: colors.primarySoft }]}>
+                <AppText variant="caption" weight="semibold" tone="accent">
+                  🔥 {user?.streakDays ?? 0} dias
+                </AppText>
+              </View>
+              {allDone ? (
+                <View style={[styles.heroChip, { backgroundColor: colors.successSoft }]}>
+                  <AppText variant="caption" weight="semibold" tone="success">
+                    Dia completo! 🎉
+                  </AppText>
+                </View>
+              ) : null}
+            </View>
           </View>
-          <ProgressBar progress={progress} />
-          <AppText variant="caption" tone="secondary" style={{ marginTop: 8 }}>
-            {doneCount} de {totalCount} tarefas concluídas
-          </AppText>
         </Card>
 
         {/* Estatísticas */}
@@ -222,11 +251,29 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginBottom: spacing.md,
   },
-  progressHeader: {
+  heroCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    gap: spacing.lg,
+  },
+  heroRingInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroInfo: {
+    flex: 1,
+    gap: 5,
+  },
+  heroChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  heroChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
   stats: {
     flexDirection: 'row',
