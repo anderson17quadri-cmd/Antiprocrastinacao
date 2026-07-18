@@ -48,6 +48,44 @@ export function buildPersonalSchedule(
     ownerId,
   });
 
+  // Básicos diários fixos: dentes (manhã e noite) e 2 L de água em 4 sessões,
+  // tudo relativo aos horários da pessoa (funciona para turno noturno).
+  items.push({
+    time: addMinutes(r.wakeTime, 15),
+    title: 'Escovar os dentes',
+    emoji: '🪥',
+    category: 'saude',
+    type: 'individual',
+    estimatedMinutes: 5,
+    difficulty: 'facil',
+    xp: 10,
+    ownerId,
+  });
+  for (let i = 0; i < 4; i += 1) {
+    items.push({
+      time: addMinutes(r.wakeTime, 60 + i * 180),
+      title: `Beber água ${i + 1}/4 (500 ml)`,
+      emoji: '💧',
+      category: 'saude',
+      type: 'individual',
+      estimatedMinutes: 5,
+      difficulty: 'facil',
+      xp: 10,
+      ownerId,
+    });
+  }
+  items.push({
+    time: addMinutes(r.sleepTime, -20),
+    title: 'Escovar os dentes (noite)',
+    emoji: '🪥',
+    category: 'saude',
+    type: 'individual',
+    estimatedMinutes: 5,
+    difficulty: 'facil',
+    xp: 10,
+    ownerId,
+  });
+
   if (r.workEnabled && r.workDays.includes(isoWeekday)) {
     const [sh, sm] = r.workStart.split(':').map(Number);
     const [eh, em] = r.workEnd.split(':').map(Number);
@@ -96,14 +134,21 @@ export function buildPersonalSchedule(
   return items;
 }
 
-/** Parte compartilhada do dia do casal (refeições, casa e tempo a dois). */
-export function buildSharedSchedule(wakeTime = '07:00'): ScheduleItem[] {
-  return [
+/**
+ * Parte compartilhada do dia do casal — só o básico fixo:
+ * pequeno-almoço, jantar e, alternando de 2 em 2 dias, verificar
+ * louça / verificar roupa (cada uma aparece a cada 2 dias).
+ */
+export function buildSharedSchedule(dateKey: string, wakeTime = '07:00'): ScheduleItem[] {
+  const items: ScheduleItem[] = [
     { time: addMinutes(wakeTime, 60), title: 'Pequeno-almoço', emoji: '☕', category: 'cozinha', type: 'casa', estimatedMinutes: 30, difficulty: 'facil', xp: 15 },
-    { time: '12:30', title: 'Almoço', emoji: '🍽️', category: 'cozinha', type: 'casa', estimatedMinutes: 60, difficulty: 'media', xp: 30 },
-    { time: '14:00', title: 'Limpeza rápida', emoji: '🧹', category: 'casa', type: 'casa', estimatedMinutes: 30, difficulty: 'facil', xp: 20 },
     { time: '18:30', title: 'Jantar', emoji: '🍲', category: 'cozinha', type: 'casa', estimatedMinutes: 60, difficulty: 'media', xp: 30 },
-    { time: '20:00', title: 'Organizar casa', emoji: '🏠', category: 'casa', type: 'casa', estimatedMinutes: 45, difficulty: 'media', xp: 80 },
-    { time: '21:00', title: 'Tempo do casal', emoji: '❤️', category: 'casal', type: 'compartilhada', estimatedMinutes: 90, difficulty: 'facil', xp: 25 },
   ];
+  const dayIndex = dayjs(dateKey).diff(dayjs('2026-01-01'), 'day');
+  if (dayIndex % 2 === 0) {
+    items.push({ time: '20:00', title: 'Verificar louça', emoji: '🧽', category: 'cozinha', type: 'casa', estimatedMinutes: 20, difficulty: 'facil', xp: 20 });
+  } else {
+    items.push({ time: '20:00', title: 'Verificar roupa', emoji: '👕', category: 'lavandaria', type: 'casa', estimatedMinutes: 20, difficulty: 'facil', xp: 20 });
+  }
+  return items;
 }

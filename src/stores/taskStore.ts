@@ -91,7 +91,6 @@ export const useTaskStore = create<TaskState>()(
         const state = get();
         if (state.seededDates.includes(dateKey)) return;
         const auth = useAuthStore.getState();
-        const members = [auth.user, auth.partner].filter(Boolean) as UserProfile[];
         const routines = useRoutineStore.getState().routines;
         const now = Date.now();
         const seeded: Record<string, Task> = { ...state.tasks };
@@ -102,15 +101,23 @@ export const useTaskStore = create<TaskState>()(
         // assim o app abre limpo, sem lista lotada.
         const items: ScheduleItem[] = [];
         const wake = auth.user ? routines[auth.user.id]?.wakeTime : undefined;
-        items.push(...buildSharedSchedule(wake));
+        items.push(...buildSharedSchedule(dateKey, wake));
         if (auth.user && routines[auth.user.id]) {
           items.push(...buildPersonalSchedule(auth.user.id, routines[auth.user.id], dateKey));
         }
         items.sort((a, b) => a.time.localeCompare(b.time));
 
-        items.forEach((item, index) => {
-          const task: Task = {
-            id: newId('task'),
+        // ID determinístico: os dois aparelhos geram o MESMO id para o mesmo
+        // item do dia — a sincronização funde em vez de duplicar.
+        const seedId = (item: ScheduleItem) =>
+          `seed_${dateKey}_${item.time.replace(':', '')}_` +
+          `${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}_${item.ownerId ?? 'casal'}`;
+
+        items.forEach((item) => {
+          const id = seedId(item);
+          if (seeded[id]) return; // já existe (ex.: veio do par via sync)
+          seeded[id] = {
+            id,
             title: item.title,
             emoji: item.emoji,
             type: item.type,
@@ -118,13 +125,9 @@ export const useTaskStore = create<TaskState>()(
             date: dateKey,
             time: item.time,
             estimatedMinutes: item.estimatedMinutes,
-            // Casa alterna entre os dois; itens pessoais pertencem ao dono da rotina.
-            assigneeId:
-              item.type === 'casa'
-                ? members.length
-                  ? members[index % members.length].id
-                  : undefined
-                : item.ownerId,
+            // Casa semeada é de Ambos (qualquer um conclui); itens pessoais
+            // pertencem ao dono da rotina.
+            assigneeId: item.type === 'casa' ? undefined : item.ownerId,
             completedBy: item.type === 'individual' ? [] : undefined,
             status: 'pending',
             priority: 'media',
@@ -136,7 +139,6 @@ export const useTaskStore = create<TaskState>()(
             createdAt: now,
             updatedAt: now,
           };
-          seeded[task.id] = task;
         });
         set({ tasks: seeded, seededDates: [...state.seededDates, dateKey] });
       },

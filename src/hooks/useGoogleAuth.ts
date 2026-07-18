@@ -41,6 +41,10 @@ export function useGoogleAuth(onIdToken: (idToken: string) => void) {
       const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
       GoogleSignin.configure({ webClientId });
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      // Limpa a conta lembrada para SEMPRE mostrar o seletor de contas —
+      // sem isso o Google reaproveita a última conta usada no aparelho
+      // (ex.: a Juliana caía direto na conta do Anderson).
+      await GoogleSignin.signOut().catch(() => undefined);
       const result = await GoogleSignin.signIn();
       if (result.type === 'success') {
         if (result.data.idToken) {
