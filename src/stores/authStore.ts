@@ -195,12 +195,22 @@ export const useAuthStore = create<AuthState>()(
         const trimmed = code.trim().toUpperCase();
 
         if (isFirebaseConfigured()) {
-          const found = await findCoupleByInviteCode(trimmed);
+          let found: Couple | null;
+          try {
+            found = await findCoupleByInviteCode(trimmed);
+          } catch (error) {
+            if ((error as { code?: string })?.code === 'permission-denied') {
+              throw new Error(
+                'O banco recusou a busca pelo código — as regras do Firestore precisam ser atualizadas (arquivo firestore.rules).',
+              );
+            }
+            throw error;
+          }
           if (!found) throw new Error('Código não encontrado. Confira e tente novamente.');
           if (found.memberIds.length >= 2 && !found.memberIds.includes(user.id)) {
             throw new Error('Este casal já está completo.');
           }
-          const updated = await addMemberToCouple(found.id, user.id);
+          const updated = await addMemberToCouple(found, user.id);
           await saveUserProfile({ ...user, coupleId: updated.id });
           setSyncCouple(updated.id);
           const partnerId = updated.memberIds.find((id) => id !== user.id);

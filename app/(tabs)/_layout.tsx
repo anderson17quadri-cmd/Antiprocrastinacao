@@ -7,8 +7,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { AppText } from '@/components/ui/AppText';
+import { syncTaskReminders } from '@/services/reminders';
 import { subscribeToCouple, subscribeToUser } from '@/services/sync';
 import { useAuthStore } from '@/stores/authStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useTheme } from '@/theme';
 
@@ -97,6 +99,18 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
 export default function TabsLayout() {
   const coupleId = useAuthStore((s) => s.couple?.id);
   const partnerId = useAuthStore((s) => s.partner?.id);
+  const userId = useAuthStore((s) => s.user?.id);
+  const tasks = useTaskStore((s) => s.tasks);
+  const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
+
+  // Lembretes locais: reagenda quando as tarefas mudam (com debounce).
+  useEffect(() => {
+    if (!userId) return;
+    const handle = setTimeout(() => {
+      void syncTaskReminders(Object.values(tasks), userId, notificationsEnabled);
+    }, 1500);
+    return () => clearTimeout(handle);
+  }, [tasks, userId, notificationsEnabled]);
 
   // Ao abrir o app, busca a versão mais recente de perfil/casal/parceiro.
   useEffect(() => {

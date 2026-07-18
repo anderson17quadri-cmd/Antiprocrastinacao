@@ -10,6 +10,7 @@ import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
 import { useAuthStore } from '@/stores/authStore';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { isFirebaseConfigured } from '@/services/firebase';
 import { brand, font, radius, spacing, useTheme } from '@/theme';
 
 interface FormValues {
@@ -67,6 +68,17 @@ export default function LoginScreen() {
   });
 
   const onProvider = async (provider: 'google' | 'apple') => {
+    // Com Firebase real, o fallback demo criaria uma conta falsa por cima
+    // da conta de verdade — melhor avisar o que falta.
+    if (isFirebaseConfigured()) {
+      Alert.alert(
+        provider === 'google' ? 'Google ainda não ativado' : 'Apple ainda não disponível',
+        provider === 'google'
+          ? 'O login com Google precisa ser ativado no Firebase. Por enquanto, entre com e-mail e senha — sua conta é a mesma.'
+          : 'O login com Apple ainda não está disponível. Entre com e-mail e senha.',
+      );
+      return;
+    }
     await signInWithProvider(provider);
     router.replace('/(tabs)');
   };

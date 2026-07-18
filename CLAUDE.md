@@ -97,10 +97,14 @@ Rodar comandos de verificação isoladamente quando o resultado for crítico.
   production — são chaves públicas, seguras para ficar no repo; a segurança de
   verdade vem das Regras do Firestore, não do sigilo da chave).
 - Firestore em **modo produção**: regras completas em `firestore.rules` (cobre
-  `users/{uid}` e `couples/{id}` + subcoleções `tasks`/`activity`). **Regras JÁ
-  PUBLICADAS pelo usuário e verificadas funcionando** (testado via curl:
-  accounts:signUp na Identity Toolkit API + PATCH autenticado no Firestore REST
-  aceito). O banco de dados está operacional.
+  `users/{uid}` e `couples/{id}` + subcoleções `tasks`/`activity`). A v1 foi
+  publicada e verificada via curl, mas bloqueava o PAREAMENTO (query por
+  inviteCode exige `allow list` para autenticados — `allow read` só de membro
+  falha com "missing or insufficient permissions"). A v2 (get/list separados)
+  está no repo — **o usuário precisa republicar no console a cada mudança do
+  arquivo**; conferir com ele antes de dar o problema por resolvido. O cliente
+  também não pode fazer `get` do casal antes de entrar (addMemberToCouple
+  recebe o doc vindo da query, não refaz a leitura).
 - Login Google real implementado (`src/hooks/useGoogleAuth.ts` +
   `authStore.signInWithGoogleIdToken`), mas **falta o usuário obter e me passar**
   `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`: Firebase Console > Authentication > Sign-in
@@ -126,6 +130,11 @@ Rodar comandos de verificação isoladamente quando o resultado for crítico.
   o bug acima — são sintomas diferentes): `includeFontPadding: false` global via
   `src/utils/androidTextFix.ts` (patch em `Text.defaultProps`, importado no topo do
   `app/_layout.tsx`). Só reproduz em Android nativo, nunca no teste web/Playwright.
+- **`AppText` ANINHADO com fontSize menor corta o texto externo no Android** (o "0%"
+  do anel-herói virou "U%" no aparelho): o span interno com lineHeight menor encolhe
+  a linha inteira. O auto-lineHeight do AppText não alcança esse caso. Solução:
+  nunca aninhar AppText de tamanhos diferentes — usar textos irmãos numa row com
+  `alignItems: 'baseline'` e lineHeight explícito.
 - O usuário roda tudo no **Termux** do celular: `npm install` altera `package-lock.json`
   e faz `git pull` falhar silenciosamente → orientar `git fetch && git reset --hard origin/<branch>`
   e conferir `git log --oneline -1`.
@@ -156,6 +165,13 @@ Rodar comandos de verificação isoladamente quando o resultado for crítico.
   quando o style sobrescreve fontSize sem lineHeight); "Para quem?" ao criar tarefa
   individual (permite criar tarefa para o par); `authStore` com fallback local se o
   Firestore falhar no login/cadastro.
+- Rodada de correções pós-teste real (18/jul): regras v2 do Firestore (pareamento —
+  PRECISA REPUBLICAR no console); "0%" do anel cortado no Android (AppText aninhado
+  → textos irmãos); botões Google/Apple com Firebase real mostram aviso em vez do
+  fallback demo (que criava conta falsa por cima da real); rotina aceita qualquer
+  horário digitado (usuário trabalha à noite) com normalização HH:MM; lembretes
+  locais de tarefas via `src/services/reminders.ts` (reagenda tudo com debounce no
+  layout das tabs; cada aparelho notifica as tarefas do próprio usuário).
 - Próximos passos combinados: usuário vai gerar o APK oficial via `eas build` (não mais
   builds reduzidos entregues pelo chat) e testar no aparelho; ajustar conforme feedback
   de capturas de tela. O usuário NÃO pretende publicar na Play Store — "nível Play

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -61,9 +61,33 @@ export default function RoutineScreen() {
         : [...config.habits, id],
     });
 
+  /** Aceita "7", "7:0", "07h30", "0730" etc. e devolve "HH:MM" — ou null. */
+  const normalizeTime = (raw: string): string | null => {
+    const m = raw.trim().toLowerCase().replace('h', ':').match(/^(\d{1,2})(?::?(\d{2}))?$/);
+    if (!m) return null;
+    const h = Number(m[1]);
+    const min = Number(m[2] ?? '0');
+    if (h > 23 || min > 59) return null;
+    return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+  };
+
   const save = () => {
     if (!user) return;
-    setRoutine(user.id, config);
+    const wakeTime = normalizeTime(config.wakeTime);
+    const sleepTime = normalizeTime(config.sleepTime);
+    const workStart = normalizeTime(config.workStart);
+    const workEnd = normalizeTime(config.workEnd);
+    if (!wakeTime || !sleepTime || (config.workEnabled && (!workStart || !workEnd))) {
+      Alert.alert('Horário inválido', 'Use o formato HH:MM — por exemplo 22:30 ou 05:00.');
+      return;
+    }
+    setRoutine(user.id, {
+      ...config,
+      wakeTime,
+      sleepTime,
+      workStart: workStart ?? config.workStart,
+      workEnd: workEnd ?? config.workEnd,
+    });
     reseedDay(todayKey());
     if (params.next === 'pair') {
       router.replace('/(auth)/pair');
@@ -129,14 +153,37 @@ export default function RoutineScreen() {
         <AppText variant="heading" style={styles.sectionTitle}>
           Horários ⏰
         </AppText>
+        <AppText variant="caption" tone="secondary" style={{ marginBottom: spacing.sm }}>
+          Qualquer horário vale — trabalha de noite e dorme de dia? É só digitar o seu.
+        </AppText>
+        <View style={styles.rowFields}>
+          <View style={{ flex: 1 }}>
+            <TextField
+              label="Acordar"
+              placeholder="07:00"
+              keyboardType="numbers-and-punctuation"
+              value={config.wakeTime}
+              onChangeText={(v) => patch({ wakeTime: v })}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <TextField
+              label="Dormir"
+              placeholder="22:30"
+              keyboardType="numbers-and-punctuation"
+              value={config.sleepTime}
+              onChangeText={(v) => patch({ sleepTime: v })}
+            />
+          </View>
+        </View>
         <AppText variant="caption" tone="secondary" style={styles.groupLabel}>
-          Acordar
+          Sugestões — acordar
         </AppText>
         <View style={styles.chipRow}>
           {QUICK_TIMES_WAKE.map((t) => timeChip(t, config.wakeTime === t, () => patch({ wakeTime: t })))}
         </View>
         <AppText variant="caption" tone="secondary" style={styles.groupLabel}>
-          Dormir
+          Sugestões — dormir
         </AppText>
         <View style={styles.chipRow}>
           {QUICK_TIMES_SLEEP.map((t) => timeChip(t, config.sleepTime === t, () => patch({ sleepTime: t })))}

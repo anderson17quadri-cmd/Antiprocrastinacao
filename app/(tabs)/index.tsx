@@ -143,12 +143,14 @@ export default function HomeScreen() {
         {/* Progresso do dia — anel-herói */}
         <Card index={0} style={styles.heroCard}>
           <ProgressRing progress={progress} size={116} strokeWidth={11}>
+            {/* Textos irmãos (não aninhados): span aninhado com fonte menor
+                encolhe a linha no Android e corta o topo do número. */}
             <View style={styles.heroRingInner}>
-              <AppText variant="title" weight="extrabold" style={{ fontSize: 30 }}>
+              <AppText variant="title" weight="extrabold" style={{ fontSize: 30, lineHeight: 42 }}>
                 {productivity}
-                <AppText variant="subheading" weight="bold" tone="accent">
-                  %
-                </AppText>
+              </AppText>
+              <AppText variant="subheading" weight="bold" tone="accent" style={{ lineHeight: 34 }}>
+                %
               </AppText>
             </View>
           </ProgressRing>
@@ -257,7 +259,8 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   heroRingInner: {
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'baseline',
     justifyContent: 'center',
   },
   heroInfo: {

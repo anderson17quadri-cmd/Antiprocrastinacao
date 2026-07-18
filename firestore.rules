@@ -38,7 +38,12 @@ service cloud.firestore {
         request.auth.uid in request.resource.data.memberIds &&
         request.resource.data.memberIds.size() == 1;
 
-      allow read: if isCoupleMember(coupleId);
+      // Leitura direta: só membros. A CONSULTA (list) precisa ser liberada
+      // para autenticados — é assim que o par encontra o casal pelo código
+      // de convite antes de entrar (sem isso o pareamento falha com
+      // "missing or insufficient permissions").
+      allow get: if isCoupleMember(coupleId);
+      allow list: if isSignedIn();
 
       // Update: membros existentes podem atualizar (score, meta) OU um
       // segundo usuário pode entrar via código, desde que o casal ainda

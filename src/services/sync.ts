@@ -138,19 +138,20 @@ export async function findCoupleByInviteCode(code: string): Promise<Couple | nul
   return snap.empty ? null : (snap.docs[0].data() as Couple);
 }
 
-export async function addMemberToCouple(coupleId: string, userId: string): Promise<Couple> {
+/**
+ * Entra no casal já encontrado pela consulta de código. Recebe o doc
+ * inteiro (não refaz o `get`): antes de entrar o usuário ainda não é
+ * membro, e as regras só permitem `get` a membros.
+ */
+export async function addMemberToCouple(couple: Couple, userId: string): Promise<Couple> {
   const db = firestore();
   if (!db) throw new Error('Firestore indisponível');
-  const { doc, getDoc, updateDoc, arrayUnion } = await import('firebase/firestore');
-  const ref = doc(db, 'couples', coupleId);
-  const current = await getDoc(ref);
-  if (!current.exists()) throw new Error('Casal não encontrado');
-  const data = current.data() as Couple;
-  if (data.memberIds.length >= 2 && !data.memberIds.includes(userId)) {
+  if (couple.memberIds.length >= 2 && !couple.memberIds.includes(userId)) {
     throw new Error('Este casal já está completo');
   }
-  await updateDoc(ref, { memberIds: arrayUnion(userId) });
-  return { ...data, memberIds: [...new Set([...data.memberIds, userId])] };
+  const { doc, updateDoc, arrayUnion } = await import('firebase/firestore');
+  await updateDoc(doc(db, 'couples', couple.id), { memberIds: arrayUnion(userId) });
+  return { ...couple, memberIds: [...new Set([...couple.memberIds, userId])] };
 }
 
 /** Escuta o perfil de um usuário (usado para ver o parceiro em tempo real). */
