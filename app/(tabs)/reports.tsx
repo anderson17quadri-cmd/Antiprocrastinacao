@@ -64,8 +64,18 @@ export default function ReportsScreen() {
     return stats.map((s) => ({ x: capitalize(s.label), y: s.completed }));
   }, [allTasks]);
 
-  const userDone = periodTasks.filter((t) => t.status === 'done' && t.assigneeId === user?.id).length;
-  const partnerDone = periodTasks.filter((t) => t.status === 'done' && t.assigneeId === partner?.id).length;
+  // Placar: conta quem CONCLUIU (completedById / parte individual), não o
+  // responsável — é o jogo do casal: quem faz mais, ganha.
+  const doneByMember = (memberId?: string) =>
+    memberId
+      ? periodTasks.filter(
+          (t) =>
+            (t.status === 'done' && t.completedById === memberId) ||
+            (t.type === 'individual' && (t.completedBy ?? []).includes(memberId)),
+        ).length
+      : 0;
+  const userDone = doneByMember(user?.id);
+  const partnerDone = doneByMember(partner?.id);
   const ranking = [
     {
       name: user?.name ?? 'Você',

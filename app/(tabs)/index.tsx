@@ -209,6 +209,7 @@ export default function HomeScreen() {
               index={index}
               currentUserId={user?.id}
               assigneeName={nameFor(task.assigneeId)}
+              completedByName={nameFor(task.completedById)?.split(' ')[0]}
               onPress={() => router.push({ pathname: '/task/[id]', params: { id: task.id } })}
               onAction={() => handleAction(task.id)}
             />

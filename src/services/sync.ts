@@ -10,14 +10,24 @@
  *    escuta o perfil do parceiro (XP, moedas, sequência) em tempo real.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ActivityEvent, Couple, Task, UserProfile } from '@/domain/entities';
+import { ActivityEvent, Couple, Redemption, Reward, Task, UserProfile } from '@/domain/entities';
 import { firestore, isFirebaseConfigured } from './firebase';
 
 const QUEUE_KEY = 'foco-a-dois/sync-queue';
 
+/** Subcoleção do casal para cada tipo sincronizado. */
+const COLLECTIONS = {
+  task: 'tasks',
+  activity: 'activity',
+  reward: 'rewards',
+  redemption: 'redemptions',
+} as const;
+
 interface QueuedOp {
-  kind: 'task' | 'activity';
-  payload: Task | ActivityEvent;
+  kind: keyof typeof COLLECTIONS;
+  payload: Task | ActivityEvent | Reward | Redemption;
+  /** true = apagar o documento em vez de gravar. */
+  remove?: boolean;
 }
 
 let coupleId: string | null = null;
@@ -37,9 +47,13 @@ async function enqueue(op: QueuedOp): Promise<void> {
 async function writeOp(op: QueuedOp): Promise<void> {
   const db = firestore();
   if (!db || !coupleId) throw new Error('sync unavailable');
-  const { doc, setDoc } = await import('firebase/firestore');
-  const collection = op.kind === 'task' ? 'tasks' : 'activity';
-  await setDoc(doc(db, 'couples', coupleId, collection, op.payload.id), op.payload, { merge: true });
+  const { doc, setDoc, deleteDoc } = await import('firebase/firestore');
+  const ref = doc(db, 'couples', coupleId, COLLECTIONS[op.kind], op.payload.id);
+  if (op.remove) {
+    await deleteDoc(ref);
+  } else {
+    await setDoc(ref, op.payload, { merge: true });
+  }
 }
 
 async function push(op: QueuedOp): Promise<void> {
@@ -59,6 +73,18 @@ export function pushActivity(event: ActivityEvent): void {
   void push({ kind: 'activity', payload: event });
 }
 
+export function pushReward(reward: Reward): void {
+  void push({ kind: 'reward', payload: reward });
+}
+
+export function removeRewardRemote(reward: Reward): void {
+  void push({ kind: 'reward', payload: reward, remove: true });
+}
+
+export function pushRedemption(redemption: Redemption): void {
+  void push({ kind: 'redemption', payload: redemption });
+}
+
 /** Reenvia a fila offline; chamar quando a conectividade voltar. */
 export async function flushQueue(): Promise<void> {
   if (!isFirebaseConfigured() || !coupleId) return;
@@ -76,10 +102,17 @@ export async function flushQueue(): Promise<void> {
   await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(failed));
 }
 
-/** Escuta as tarefas do casal em tempo real e aplica no estado local. */
+interface CoupleListeners {
+  onTasks: (tasks: Task[]) => void;
+  onRewards?: (rewards: Reward[]) => void;
+  onRedemptions?: (redemptions: Redemption[]) => void;
+  onActivity?: (events: ActivityEvent[]) => void;
+}
+
+/** Escuta tarefas, loja, resgates e atividades do casal em tempo real. */
 export async function subscribeToCouple(
   id: string,
-  onTasks: (tasks: Task[]) => void,
+  listeners: CoupleListeners,
 ): Promise<() => void> {
   setSyncCouple(id);
   if (!isFirebaseConfigured()) return () => {};
@@ -87,9 +120,22 @@ export async function subscribeToCouple(
   if (!db) return () => {};
   const { collection, onSnapshot } = await import('firebase/firestore');
   unsubscribeTasks?.();
-  unsubscribeTasks = onSnapshot(collection(db, 'couples', id, 'tasks'), (snap) => {
-    onTasks(snap.docs.map((d) => d.data() as Task));
-  });
+
+  const subs: (() => void)[] = [];
+  const listen = <T>(name: string, handler?: (docs: T[]) => void) => {
+    if (!handler) return;
+    subs.push(
+      onSnapshot(collection(db, 'couples', id, name), (snap) => {
+        handler(snap.docs.map((d) => d.data() as T));
+      }),
+    );
+  };
+  listen<Task>('tasks', listeners.onTasks);
+  listen<Reward>('rewards', listeners.onRewards);
+  listen<Redemption>('redemptions', listeners.onRedemptions);
+  listen<ActivityEvent>('activity', listeners.onActivity);
+
+  unsubscribeTasks = () => subs.forEach((fn) => fn());
   void flushQueue();
   return unsubscribeTasks;
 }

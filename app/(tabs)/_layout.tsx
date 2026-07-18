@@ -10,6 +10,7 @@ import { AppText } from '@/components/ui/AppText';
 import { syncTaskReminders } from '@/services/reminders';
 import { subscribeToCouple, subscribeToUser } from '@/services/sync';
 import { useAuthStore } from '@/stores/authStore';
+import { useRewardsStore } from '@/stores/rewardsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTaskStore } from '@/stores/taskStore';
 import { useTheme } from '@/theme';
@@ -117,12 +118,14 @@ export default function TabsLayout() {
     void useAuthStore.getState().refreshFromFirebase();
   }, []);
 
-  // Sincronização em tempo real das tarefas do casal.
+  // Sincronização em tempo real: tarefas, loja e resgates do casal.
   useEffect(() => {
     if (!coupleId) return;
     let unsubscribe: (() => void) | undefined;
-    void subscribeToCouple(coupleId, (remote) => {
-      useTaskStore.getState().applyRemoteTasks(remote);
+    void subscribeToCouple(coupleId, {
+      onTasks: (remote) => useTaskStore.getState().applyRemoteTasks(remote),
+      onRewards: (remote) => useRewardsStore.getState().applyRemoteRewards(remote),
+      onRedemptions: (remote) => useRewardsStore.getState().applyRemoteRedemptions(remote),
     }).then((fn) => {
       unsubscribe = fn;
     });

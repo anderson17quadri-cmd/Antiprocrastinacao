@@ -7,6 +7,8 @@ rules_version = '2';
 //   couples/{coupleId}                 — dados do casal (código, score, meta)
 //   couples/{coupleId}/tasks/{taskId}
 //   couples/{coupleId}/activity/{eventId}
+//   couples/{coupleId}/rewards/{rewardId}       — loja (itens criados por qualquer um)
+//   couples/{coupleId}/redemptions/{redeemId}   — histórico de resgates
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -62,6 +64,14 @@ service cloud.firestore {
       }
 
       match /activity/{eventId} {
+        allow read, write: if isCoupleMember(coupleId);
+      }
+
+      match /rewards/{rewardId} {
+        allow read, write: if isCoupleMember(coupleId);
+      }
+
+      match /redemptions/{redeemId} {
         allow read, write: if isCoupleMember(coupleId);
       }
     }

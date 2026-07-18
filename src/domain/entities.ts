@@ -56,6 +56,8 @@ export interface Task {
   assigneeId?: string;
   /** Tarefas individuais: ids dos usuários que já concluíram a sua parte. */
   completedBy?: string[];
+  /** Quem deu a conclusão final (placar do casal — quem faz mais, ganha). */
+  completedById?: string;
   status: TaskStatus;
   priority: TaskPriority;
   difficulty: TaskDifficulty;
@@ -147,6 +149,8 @@ export interface Reward {
   category: RewardCategory;
   createdBy: string;
   createdAt: number;
+  /** Última modificação (merge da sincronização). */
+  updatedAt?: number;
 }
 
 export interface Redemption {
@@ -159,6 +163,8 @@ export interface Redemption {
   userName: string;
   at: number;
   used: boolean;
+  /** Última modificação (merge da sincronização). */
+  updatedAt?: number;
 }
 
 /* ------------------------------------------------------------------ */

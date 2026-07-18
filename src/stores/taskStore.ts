@@ -263,11 +263,28 @@ export const useTaskStore = create<TaskState>()(
 
       applyRemoteTasks: (remote) => {
         // Merge vindo do Firestore: a versão mais recente (updatedAt) vence.
+        // Tarefa nova, atribuída a mim e criada pelo meu par nos últimos
+        // minutos: notifica na hora (sem servidor — só funciona com o app
+        // aberto/em segundo plano neste aparelho).
+        const myId = useAuthStore.getState().user?.id;
+        const recentCutoff = Date.now() - 3 * 60 * 1000;
         set((s) => {
           const tasks = { ...s.tasks };
           for (const task of remote) {
             const local = tasks[task.id];
+            const isNewAssignment =
+              !local &&
+              myId &&
+              task.assigneeId === myId &&
+              task.createdBy !== myId &&
+              task.createdAt >= recentCutoff &&
+              task.status !== 'cancelled';
             if (!local || task.updatedAt > local.updatedAt) tasks[task.id] = task;
+            if (isNewAssignment) {
+              notifyPartner(
+                `${task.emoji} Nova tarefa pra você: ${task.title}${task.time ? ` às ${task.time}` : ''}!`,
+              );
+            }
           }
           return { tasks };
         });

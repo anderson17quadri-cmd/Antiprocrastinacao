@@ -14,6 +14,8 @@ import { formatMinutes } from '@/utils/format';
 interface Props {
   task: Task;
   assigneeName?: string;
+  /** Nome de quem concluiu (placar do casal). */
+  completedByName?: string;
   /** Usuário atual — define conclusão individual e permissão de casa. */
   currentUserId?: string;
   onPress: () => void;
@@ -22,7 +24,7 @@ interface Props {
 }
 
 /** Linha de tarefa da lista: ícone, nome, horário, responsável e ação. */
-export function TaskListItem({ task, assigneeName, currentUserId, onPress, onAction, index = 0 }: Props) {
+export function TaskListItem({ task, assigneeName, completedByName, currentUserId, onPress, onAction, index = 0 }: Props) {
   const { colors, dark } = useTheme();
   const category = CATEGORIES[task.category];
   const tint = task.color ?? category.color;
@@ -88,10 +90,13 @@ export function TaskListItem({ task, assigneeName, currentUserId, onPress, onAct
             </AppText>
           </View>
           <AppText variant="caption" tone="muted">
-            ⏱ {formatMinutes(task.estimatedMinutes)}
-            {task.type === 'individual' && task.completedBy?.length === 1 && !done
-              ? ' · par já concluiu 👀'
-              : ''}
+            {task.status === 'done' && completedByName
+              ? `✅ feita por ${completedByName}`
+              : `⏱ ${formatMinutes(task.estimatedMinutes)}${
+                  task.type === 'individual' && task.completedBy?.length === 1 && !done
+                    ? ' · par já concluiu 👀'
+                    : ''
+                }`}
           </AppText>
         </View>
 

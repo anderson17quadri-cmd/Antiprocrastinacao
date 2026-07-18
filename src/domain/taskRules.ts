@@ -68,6 +68,7 @@ export function applyCompletion(
       status: everyoneDone ? 'done' : task.status === 'in_progress' ? 'pending' : task.status,
       spentSeconds: spentSeconds || task.spentSeconds,
       completedAt: everyoneDone ? now : task.completedAt,
+      completedById: everyoneDone ? userId : task.completedById,
       updatedAt: now,
     };
   }
@@ -77,6 +78,7 @@ export function applyCompletion(
     status: 'done',
     spentSeconds: spentSeconds || task.spentSeconds,
     completedAt: now,
+    completedById: userId,
     updatedAt: now,
   };
 }
