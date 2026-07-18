@@ -27,6 +27,15 @@
       "expo-router",
       "./plugins/withReactNativeArchitectures",
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ],
+      [
         "expo-font",
         {
           "fonts": [
